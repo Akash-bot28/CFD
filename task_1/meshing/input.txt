@@ -1,0 +1,34 @@
+L1   5.0
+L2   8.0
+
+h1   6.0
+h2   6.0
+
+
+XC   0.0
+YC   0.0
+
+a    1.0
+
+Nx1  41
+Nxs  101
+Nx2  71
+
+Ny1  51
+Nys  101
+Ny2  51
+
+alpha1   0.0
+alpha2   0.5
+
+betax1   1.1
+betaxs   150.0
+betax2   1.1
+
+betay1   1.1
+betays   150.0
+betay2   1.1
+
+itermax   100000
+tolerance   0.00001
+dbeta   0.000001
