@@ -3,4 +3,5 @@
 *.exe
 *.dat
 *.png
+*.svg
 pyvenv/

@@ -4,20 +4,22 @@ import matplotlib.pyplot as plt
 
 mesh_id = sys.argv[1]
 
-xdata = np.loadtxt("X_optimization.dat")
-ydata = np.loadtxt("Y_optimization.dat")
+xdata = np.loadtxt(f"X_optimization_{mesh_id}.dat")
+ydata = np.loadtxt(f"Y_optimization_{mesh_id}.dat")
 
 iter_x   = xdata[:,0]
 beta1_x  = xdata[:,1]
-beta2_x  = xdata[:,2]
-error1_x = xdata[:,3]
-error2_x = xdata[:,4]
+betas_x  = xdata[:,2]
+beta2_x  = xdata[:,3]
+error1_x = xdata[:,4]
+error2_x = xdata[:,5]
 
 iter_y   = ydata[:,0]
 beta1_y  = ydata[:,1]
-beta2_y  = ydata[:,2]
-error1_y = ydata[:,3]
-error2_y = ydata[:,4]
+betas_y  = ydata[:,2]
+beta2_y  = ydata[:,3]
+error1_y = ydata[:,4]
+error2_y = ydata[:,5]
 
 fig, ax = plt.subplots(2, 1, figsize=(12,10))
 

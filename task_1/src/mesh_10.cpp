@@ -213,7 +213,7 @@ void exportGridSpacing(const Mesh& m,string xfilename, string yfilename){
 }
 
 void exportOptimization(const Axis& a){
-    ofstream file(a.name + "_optimization.dat");
+    ofstream file(a.name + "_optimization_10.dat");
 
     for(size_t i=0; i<a.beta1_hist.size(); i++)
     {
