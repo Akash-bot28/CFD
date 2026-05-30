@@ -98,7 +98,7 @@ double x1(double zi, double L, double alpha, double beta){
     double A = (beta + 1.0)/(beta - 1.0);
     double exponent = (zi - alpha)/(1.0 - alpha);
     double R = pow(A, exponent);
-    double xi=L*((beta + 2.0*alpha)*R - beta + 2.0*alpha)/((1.0 + 2.0*alpha)+ R);
+    double xi=L*((beta + 2.0*alpha)*R - beta + 2.0*alpha)/((1.0 + 2.0*alpha)*(1+ R));
     return xi;
 }
 double x2(double zi, double L, double beta){

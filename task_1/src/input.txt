@@ -21,14 +21,16 @@ Ny2  51
 alpha1   0.0
 alpha2   0.5
 
-betax1   1.1
+betax1   1.01672
 betaxs   150.0
-betax2   1.1
+betax2   1.01672
 
-betay1   1.1
+betay1   1.01672
 betays   150.0
-betay2   1.1
+betay2   1.01672
 
-itermax   100000
-tolerance   0.00001
-dbeta   0.000001
+itermaxX   100000
+itermaxY   100000
+
+tolerance   0.001
+dbeta   0.05

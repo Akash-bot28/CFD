@@ -1,5 +1,8 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
+
+mesh_id = sys.argv[1]
 
 xdata = np.loadtxt("X_optimization.dat")
 ydata = np.loadtxt("Y_optimization.dat")
@@ -46,6 +49,6 @@ ax[1].legend()
 
 
 plt.tight_layout()
-plt.savefig("beta_optimization_10.png", dpi=1000, bbox_inches='tight')
+plt.savefig("beta_optimization_{mesh_id}.png", dpi=1000, bbox_inches='tight')
 
 plt.show()
