@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 mesh_id = sys.argv[1]
-print(f"Processing mesh {mesh_id} and ploting grid spacing")
+print(f"Plotting grid spacing for mesh {mesh_id} ...")
 
 data_dx = np.loadtxt(f"dx_{mesh_id}.dat")
 data_dy = np.loadtxt(f"dy_{mesh_id}.dat")

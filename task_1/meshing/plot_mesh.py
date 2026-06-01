@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data=np.loadtxt("mesh_9.dat")
+data=np.loadtxt("mesh_10.dat")
 
 x=data[:,0]
 y=data[:,1]
@@ -43,6 +43,6 @@ plt.xlabel('x')
 plt.ylabel('y')
 plt.grid(False)
 
-plt.savefig("mesh_9.png", dpi=1000, bbox_inches='tight')
+plt.savefig("mesh_10.png", dpi=1000, bbox_inches='tight')
 
 plt.show()

@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 mesh_id = sys.argv[1]
+print(f"Beta optimizing for mesh {mesh_id} ...")
 
 xdata = np.loadtxt(f"X_optimization_{mesh_id}.dat")
 ydata = np.loadtxt(f"Y_optimization_{mesh_id}.dat")
@@ -31,7 +32,7 @@ ax[0].plot(iter_x,error2_x,label="error2",linewidth=3)
 
 ax[0].set_title("X-axis beta optimization")
 ax[0].set_xlabel("Iteration")
-#ax[0].set_ylabel("Beta")
+ax[0].set_ylabel("beta_error")
 ax[0].grid(True)
 ax[0].legend()
 
@@ -44,7 +45,7 @@ ax[1].plot(iter_y,error2_y,label="error2",linewidth=3)
 
 ax[1].set_title("Y-axis beta optimization")
 ax[1].set_xlabel("Iteration")
-#ax[1].set_ylabel("Beta")
+ax[1].set_ylabel("beta_error")
 ax[1].grid(True)
 ax[1].legend()
 

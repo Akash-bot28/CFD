@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 mesh_id = sys.argv[1]
-print(f"Processing mesh {mesh_id} and plotting mesh")
+print(f"Plotting mesh {mesh_id}")
 
 data=np.loadtxt(f"mesh_{mesh_id}.dat")
 

@@ -59,6 +59,7 @@ void readInput(Mesh& m){
         else if(label == "betax1") input >> m.x.beta1;
         else if(label == "betaxs") input >> m.x.betas;
         else if(label == "betax2") input >> m.x.beta2;
+        else if(label == "itermaxX") input >> m.x.itermax;
 
         else if(label == "h1") input >> m.y.L1;
         else if(label == "h2") input >> m.y.L2;
@@ -69,13 +70,12 @@ void readInput(Mesh& m){
         else if(label == "betay1") input >> m.y.beta1;
         else if(label == "betays") input >> m.y.betas;
         else if(label == "betay2") input >> m.y.beta2;
-        
+        else if(label == "itermaxY") input >> m.y.itermax;
 
         else if(label == "a"){ input >> m.x.size; m.y.size=m.x.size;}
         else if(label == "alpha1") {input >> m.x.alpha1; m.y.alpha1=m.x.alpha1;}
         else if(label == "alpha2") {input >> m.x.alpha2; m.y.alpha2=m.x.alpha2;}
     
-        else if(label == "itermax") {input >> m.x.itermax;m.y.itermax = m.x.itermax;}
         else if(label == "tolerance") {input >> m.x.tolerance;m.y.tolerance = m.x.tolerance;}
         else if(label == "dbeta"){input >> m.x.dbeta;m.y.dbeta = m.x.dbeta;}
     }
@@ -134,55 +134,67 @@ void generateAxis(Axis& a){
 
 void betaOptimize(Axis& a){
     a.error.resize(2);
+
+    a.beta1_hist.clear();
+    a.betas_hist.clear();
+    a.beta2_hist.clear();
+    a.error1_hist.clear();
+    a.error2_hist.clear();
+
     generateAxis(a);
-    a.error[0]= (a.d[a.N1-1]- a.d[a.N1-2])/a.d[a.N1-2];
-    a.error[1]= (a.d[a.N1+a.Ns-2]- a.d[a.N1+a.Ns-3])/a.d[a.N1+a.Ns-3];
+    a.error[0]= abs((a.d[a.N1-1]- a.d[a.N1-2])/a.d[a.N1-2]);
+    a.error[1]= abs((a.d[a.N1+a.Ns-2]- a.d[a.N1+a.Ns-3])/a.d[a.N1+a.Ns-3]);
 
     int iter = 0;
-    while((abs(a.error[0])>a.tolerance || abs(a.error[1])>a.tolerance) && iter < a.itermax){
+
+
+    for(iter=0; iter< a.itermax; iter++)
+    {
+        if( abs(a.error[0]) <= a.tolerance && abs(a.error[1]) <= a.tolerance )
+        {
+            break;
+        }
+
+        if(a.d[a.N1-2]>a.d[a.N1-1]){
+            a.beta1 -= a.dbeta*a.error[0];
+            a.betas += a.dbeta*a.error[0];
+        }
+        else{
+            a.beta1 += a.dbeta*a.error[0];
+            a.betas -= a.dbeta*a.error[0];
+            
+        }
+
+        if(a.d[a.N1+a.Ns-3]>a.d[a.N1+a.Ns-2]){
+            a.betas -= a.dbeta*a.error[1];
+            a.beta2 +=a.dbeta*a.error[1];
+        }
+        else{
+            a.betas += a.dbeta*a.error[1];
+            a.beta2 -= a.dbeta*a.error[1];
+            
+        }
+
+        generateAxis(a);
+        a.error[0]= abs((a.d[a.N1-1]- a.d[a.N1-2])/a.d[a.N1-2]);
+        a.error[1]= abs((a.d[a.N1+a.Ns-2]- a.d[a.N1+a.Ns-3])/a.d[a.N1+a.Ns-3]);
+
         a.beta1_hist.push_back(a.beta1);
         a.betas_hist.push_back(a.betas);
         a.beta2_hist.push_back(a.beta2);
         a.error1_hist.push_back(a.error[0]);
         a.error2_hist.push_back(a.error[1]);
-        
-        if(a.d[a.N1-2]>a.d[a.N1-1]){
-            a.beta1=a.beta1-a.dbeta;
-            a.betas=a.betas+a.dbeta;
-        }
-        else{
-            a.beta1=a.beta1+a.dbeta;
-            a.betas=a.betas-a.dbeta;
-            
-        }
-
-
-        if(a.d[a.N1+a.Ns-3]>a.d[a.N1+a.Ns-2]){
-            a.betas=a.betas-a.dbeta;
-            a.beta2=a.beta2+a.dbeta;
-        }
-        else{
-            a.betas=a.betas+a.dbeta;
-            a.beta2=a.beta2-a.dbeta;
-            
-        }
-
-        generateAxis(a);
-
-        a.error[0]= (a.d[a.N1-1]- a.d[a.N1-2])/a.d[a.N1-2];
-        a.error[1]= (a.d[a.N1+a.Ns-2]- a.d[a.N1+a.Ns-3])/a.d[a.N1+a.Ns-3];
-
-
-        iter++;
 
     }
     cout << "\nOptimization iterations = "<< iter<< endl;
+    if(iter == a.itermax)
+        cout << "Stopped due to itermax." << endl;
+    else
+        cout << "Converged." << endl;
     cout<<"optimized betas of "<<a.name<<" axis are:"<< endl;
     cout<<"beta1 = "<<a.beta1<<"\n";
     cout<<"betas = "<<a.betas<<"\n";
     cout<<"beta2 = "<<a.beta2<<"\n";
-    cout<<"block interface errors are = "<<a.error[0]<<" and "<<a.error[1]<<endl;
-    
 }
 
 void exportMesh(const Mesh& m, string filename){
@@ -220,14 +232,13 @@ void exportOptimization(const Axis& a){
         file
         << i << " "
         << a.beta1_hist[i] << " "
-        << a.betas_hist[i] << " "
         << a.beta2_hist[i] << " "
+        << a.betas_hist[i] << " "
         << a.error1_hist[i] << " "
-        << a.error2_hist[i]
+        << a.error2_hist[i] 
         << endl;
     }
 }
-
 
 int main(){
     Mesh mesh;
@@ -239,7 +250,10 @@ int main(){
     buildGeometry(mesh.y);
 
     betaOptimize(mesh.x);
+    exportOptimization(mesh.x);
+
     betaOptimize(mesh.y);
+    exportOptimization(mesh.y);
 
     generateAxis(mesh.x);
     generateAxis(mesh.y);
@@ -247,17 +261,9 @@ int main(){
 
     exportMesh(mesh,"mesh_10.dat");
     exportGridSpacing(mesh,"dx_10.dat","dy_10.dat");
-    exportOptimization(mesh.x);
-    exportOptimization(mesh.y);
+    
 
     return 0;
 }
-
-
-
-
-
-
-
 
 

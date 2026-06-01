@@ -131,7 +131,7 @@ void generateAxis(Axis& a){
 
     for(int i=0; i<a.N-1; i++) a.d[i]=a.coord[i+1] - a.coord[i];
 }
-/*
+
 void betaOptimize(Axis& a){
     a.error.resize(2);
 
@@ -142,8 +142,8 @@ void betaOptimize(Axis& a){
     a.error2_hist.clear();
 
     generateAxis(a);
-    a.error[0]= (a.d[a.N1-1]- a.d[a.N1-2])/a.d[a.N1-2];
-    a.error[1]= (a.d[a.N1+a.Ns-2]- a.d[a.N1+a.Ns-3])/a.d[a.N1+a.Ns-3];
+    a.error[0]= abs((a.d[a.N1-1]- a.d[a.N1-2])/a.d[a.N1-2]);
+    a.error[1]= abs((a.d[a.N1+a.Ns-2]- a.d[a.N1+a.Ns-3])/a.d[a.N1+a.Ns-3]);
 
     int iter = 0;
 
@@ -176,8 +176,8 @@ void betaOptimize(Axis& a){
         }
 
         generateAxis(a);
-        a.error[0]= (a.d[a.N1-1]- a.d[a.N1-2])/a.d[a.N1-2];
-        a.error[1]= (a.d[a.N1+a.Ns-2]- a.d[a.N1+a.Ns-3])/a.d[a.N1+a.Ns-3];
+        a.error[0]= abs((a.d[a.N1-1]- a.d[a.N1-2])/a.d[a.N1-2]);
+        a.error[1]= abs((a.d[a.N1+a.Ns-2]- a.d[a.N1+a.Ns-3])/a.d[a.N1+a.Ns-3]);
 
         a.beta1_hist.push_back(a.beta1);
         a.betas_hist.push_back(a.betas);
@@ -196,8 +196,8 @@ void betaOptimize(Axis& a){
     cout<<"betas = "<<a.betas<<"\n";
     cout<<"beta2 = "<<a.beta2<<"\n";
 }
-*/
 
+/*
 void betaOptimize(Axis& a){
     a.error.resize(2);
 
@@ -248,7 +248,7 @@ void betaOptimize(Axis& a){
 
 }
 
-
+*/
 
 void exportMesh(const Mesh& m, string filename){
     ofstream file(filename);
