@@ -1,0 +1,119 @@
+Mesh
+│
+├── Axis
+│   │
+│   ├── SegmentType
+│   |   ├──Uniform
+|   |   ├──CompressBoth
+|   |   ├──StretchLeft
+|   |   ├──StretchRight
+│   │
+│   ├── Segment[]
+│   ├── Interface[]
+│   │
+│   ├── coord[]
+│   └── d[]
+│
+└── Body[]
+
+Mesh
+│
+├── x : Axis
+│   ├── domainMin
+│   ├── domainMax
+│   ├── itermax
+│   ├── segments[]
+│   ├── interfaces[]
+│   ├── coord[]
+│   ├── d[]
+│   └── errorHistory[]
+│
+├── y : Axis
+│   └── same
+│
+├── bodies[]
+│
+├── opt
+│   ├── tolerance
+│   └── stepSize
+│
+├── betaStretchLeft
+├── betaUniform
+├── betaCompressBoth
+└── betaStretchRight
+
+main()
+│
+├── readInput()
+│   │
+│   ├── read Bodies
+│   ├── read Axis settings
+│   └── read Optimization settings
+│
+├── buildSegments()
+│   │
+│   ├── use bodies[]
+│   ├── create Segment objects
+│   └── populate axis.segments[]
+│
+├── buildInterfaces()
+│   │
+│   └── populate axis.interfaces[]
+│
+├── betaOptimize()
+│   │
+│   ├── generateAxis()
+│   │
+│   ├── computeInterfaceErrors()
+│   │
+│   ├── updateBetas()
+│   │
+│   └── store histories
+│
+├── generateAxis()
+│   │
+│   ├── generateSegment(0)
+│   ├── generateSegment(1)
+│   ├── generateSegment(2)
+│   └── ...
+│
+├── exportMesh()
+│
+├── exportGridSpacing()
+│
+└── exportOptimization()
+
+generateAxis()
+│
+├── segmentCoord = generateSegment(Seg0)
+│
+├── append to axis.coord
+│
+├── segmentCoord = generateSegment(Seg1)
+│
+├── append to axis.coord
+│
+├── segmentCoord = generateSegment(Seg2)
+│
+├── append to axis.coord
+│
+└── compute axis.d
+
+
+readInput
+    |
+buildBodyGeometry
+    |
+buildSegments
+    |
+buildInterfaces
+    |
+generateAxis------------------|
+    |                         |
+computeInterfaceError         |
+    |                         |
+updateBeta                    |
+    |                         |
+betaOptimize------------------|
+    |
+export*

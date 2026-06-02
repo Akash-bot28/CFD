@@ -1,0 +1,55 @@
+# Domain
+
+Xmin  -10
+Xmax   10
+Ymin  -6
+Ymax   6
+
+Bodies  2
+
+# Body_1
+
+xc       -3.0
+yc        0.0
+length    1.0
+height    1.0
+
+# Body_2
+
+xc        3.0
+yc        0.0
+length    1.0
+height    1.0
+
+# Segment Parameters
+
+betaStretchLeft    1.05
+betaUniform        150
+betaCompressBoth   1.03
+betaStretchRight   1.05
+
+# X Axis
+
+XSegments 5
+
+Seg0 StretchLeft   40
+Seg1 Uniform       90
+Seg2 CompressBoth  50
+Seg3 Uniform       90
+Seg4 StretchRight  40
+
+# Y Axis
+
+YSegments 3
+
+Seg0 StretchLeft   35
+Seg1 Uniform       90
+Seg2 StretchRight  35
+
+# Optimization
+
+itermaxX   1000000
+itermaxY   1000000
+
+tolerance   0.00001
+step_size   0.000001

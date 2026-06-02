@@ -1,0 +1,61 @@
+1. class Segment type
+	uniform(alpha=0.5, beta>100): when there is a object
+	compressboth(alpha=0.5, bets>~1): when between two bodies
+	stretchleft(alpha=0.0, beta>~1): domain wall on left side
+	stretchright(no alpha, beta>~1): domain wall on right side 
+	
+	{four different functions will be defined for these four cases)
+
+2. Stretch law not required i think????????
+3. struct segment : name
+					type
+					{dimentions along specified axis}
+					nodes
+					alpha, beta { alpha wont be required as it will embeaded in the four functions for stretch/compress. beta should be initialized by user, later optimized}
+					coordinates stored ???
+					delta coord ???
+					
+4. struct interface : left side
+				     right side
+				     error
+				     
+5. struct body : dimention anong the specified axis
+
+6. struct axis : name
+				 domain dimentions
+				 segments list
+				 interface list
+				 coordinate list
+				 delta coordinate list
+				 
+				 itermax
+				 delta tolerance
+                 step size(dbeta)
+
+7. struct mesh: x 
+				y
+				x body  ???  i dont this they are reqired
+				y body  ???
+---------------------------------------------------------------------------------------				
+8. readinput  : need to mention every fucking thing with proper referencing.
+
+9. build segments
+10. build interfaces
+----------------------------------------------------------------------------------------
+11. uniform grid function
+12. both side fine and middle course function
+13. stretching left function
+14. stretching right function
+
+15. generate segment ???? 
+----------------------------------------------------------------------------------------
+16. generate axis
+----------------------------------------------------------------------------------------
+17. compute interface error
+18. updating beta values
+19. main optimization loop of beta
+{ no need to store beta value history, only the error history needs to be stored to later plot the graph for convergence}
+-----------------------------------------------------------------------------------------
+20. export mesh
+21. export grid spacing
+22. export beta optimization
