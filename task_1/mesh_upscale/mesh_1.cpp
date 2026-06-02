@@ -35,7 +35,6 @@ struct Segment{
 struct Interface{
     int leftSegment;
     int rightSegment;
-    int interfaceNode;
     double error;
 };
 
@@ -95,17 +94,13 @@ SegmentType stringToSegmentType(const string& type){
     if(type == "CompressBoth") return SegmentType::CompressBoth;
     if(type == "StretchRight") return SegmentType::StretchRight;
 
-    //throw runtime_error("Unknown segment type: " + type);
+    throw runtime_error("Unknown segment type: " + type);
 }
 
 void readInput(Mesh& mesh){
     ifstream input("input.txt");
 
-    if(!input)
-    {
-        cerr << "Cannot open input.txt\n";
-        exit(1);
-    }
+    if(!input){cerr << "Cannot open input.txt\n";exit(1);}
 
     string label;
 
@@ -300,7 +295,7 @@ void buildInterfaces(Axis& axis){
     }
 }
 
-generateUniform(double zi, double L, double beta){
+double generateUniform(double zi, double L, double beta){
     double alpha = 0.5;
     double A = (beta + 1.0)/(beta - 1.0);
     double exponent = (zi - alpha)/(1.0 - alpha);
@@ -308,7 +303,7 @@ generateUniform(double zi, double L, double beta){
     double xi=L*((beta + 2.0*alpha)*R - beta + 2.0*alpha)/((1.0 + 2.0*alpha)*(1+ R));
     return xi;
 }
-generateCompressBoth(double zi, double L, double beta){
+double generateCompressBoth(double zi, double L, double beta){
     double alpha = 0.5;
     double A = (beta + 1.0)/(beta - 1.0);
     double exponent = (zi - alpha)/(1.0 - alpha);
@@ -316,7 +311,7 @@ generateCompressBoth(double zi, double L, double beta){
     double xi=L*((beta + 2.0*alpha)*R - beta + 2.0*alpha)/((1.0 + 2.0*alpha)*(1+ R));
     return xi;
 }
-generateStretchLeft(double zi, double L, double beta){
+double generateStretchLeft(double zi, double L, double beta){
     double alpha = 0.0;
     double A = (beta + 1.0)/(beta - 1.0);
     double exponent = (zi - alpha)/(1.0 - alpha);
@@ -324,7 +319,7 @@ generateStretchLeft(double zi, double L, double beta){
     double xi=L*((beta + 2.0*alpha)*R - beta + 2.0*alpha)/((1.0 + 2.0*alpha)*(1+ R));
     return xi;
 }
-generateStretchRight(double zi, double L, double beta){
+double generateStretchRight(double zi, double L, double beta){
     double A = (beta + 1.0)/(beta - 1.0);
     double exponent = (1-zi);
     double R = pow(A, exponent);
@@ -361,10 +356,18 @@ void generateAxis(Axis& axis){
     axis.coord.clear();
     axis.d.clear();
     for(int i=0; i<axis.segments.size(); i++){
+        Segment& seg = axis.segments[i];
         vector<double> segmentCoord = generateSegment(axis.segments[i]);
-        if(i == 0) axis.coord.insert(axis.coord.end(),segmentCoord.begin(),segmentCoord.end());
-        else axis.coord.insert(axis.coord.end(),segmentCoord.begin() + 1,segmentCoord.end());
-        
+        if(i == 0){
+            seg.startNode = 0;
+            seg.endNode = seg.N - 1;
+            axis.coord.insert(axis.coord.end(),segmentCoord.begin(),segmentCoord.end());
+        }
+        else{
+            seg.startNode =axis.coord.size() - 1;
+            seg.endNode =seg.startNode + seg.N - 1;
+            axis.coord.insert(axis.coord.end(),segmentCoord.begin() + 1,segmentCoord.end());
+        }
     }
     axis.d.resize(axis.coord.size()-1);
     for(int i=0; i<axis.coord.size()-1; i++) axis.d[i] = axis.coord[i+1] - axis.coord[i];
@@ -373,30 +376,132 @@ void generateAxis(Axis& axis){
 
 void computeInterfaceErrors(Axis& axis){
     for(int i=0; i<axis.interfaces.size(); i++){
-        int leftSeg =axis.interfaces[i].leftSegment;
-        int rightSeg =axis.interfaces[i].rightSegment;
-        int interfaceNode =axis.segments[leftSeg].endNode;
-        double dLeft =axis.coord[interfaceNode]-axis.coord[interfaceNode-1];
-        double dRight =axis.coord[interfaceNode+1]-axis.coord[interfaceNode];
-        axis.interfaces[i].error =abs((dRight - dLeft)/dLeft);
+        int leftSeg = axis.interfaces[i].leftSegment;
+        int interfaceNode = axis.segments[leftSeg].endNode;
+        double dLeft = axis.coord[interfaceNode]-axis.coord[interfaceNode-1];
+        double dRight = axis.coord[interfaceNode+1]-axis.coord[interfaceNode];
+        axis.interfaces[i].error = abs((dRight - dLeft)/dLeft);
     }
 }
 
-int main()
-{
+void updateBetas(Axis& axis, double stepSize){
+    for(int i=0; i<axis.interfaces.size(); i++){
+        int leftSeg =axis.interfaces[i].leftSegment;
+        int rightSeg = axis.interfaces[i].rightSegment;
+        int interfaceNode =axis.segments[leftSeg].endNode;
+        double dLeft =axis.coord[interfaceNode] - axis.coord[interfaceNode-1];
+        double dRight =axis.coord[interfaceNode+1] - axis.coord[interfaceNode];
+        double error =axis.interfaces[i].error;
+        if(dLeft > dRight){
+            axis.segments[leftSeg].beta -= stepSize*error;
+            axis.segments[leftSeg].beta = max(axis.segments[leftSeg].beta,1.000001);
+            axis.segments[rightSeg].beta += stepSize*error;
+            axis.segments[rightSeg].beta = max(axis.segments[rightSeg].beta,1.000001);
+        }
+        else{
+            axis.segments[leftSeg].beta += stepSize*error;
+            axis.segments[leftSeg].beta = max(axis.segments[leftSeg].beta,1.000001);
+            axis.segments[rightSeg].beta -= stepSize*error;
+            axis.segments[rightSeg].beta = max(axis.segments[rightSeg].beta,1.000001);
+        }
+    }
+}
+
+void betaOptimize(Axis& axis, double tolerance, double stepSize){
+    axis.errorHistory.clear();
+    //generateAxis(axis);
+    int iter;
+    for(iter=0; iter<axis.itermax; iter++){
+        computeInterfaceErrors(axis);
+        double maxError = 0.0;
+        for(int i=0;i<axis.interfaces.size();i++){
+            if(axis.interfaces[i].error > maxError){
+                maxError = axis.interfaces[i].error;
+            }
+        }
+        axis.errorHistory.push_back(maxError);
+        if(maxError <= tolerance) break;
+        updateBetas(axis,stepSize);
+        generateAxis(axis);
+        
+    }
+    cout << "\nOptimization iterations = "<< iter << endl;
+    if(iter == axis.itermax) cout << "Stopped due to itermax." << endl;
+    else cout << "Converged." << endl;
+}
+
+void exportMesh(const Mesh& mesh,const string& filename){
+    ofstream file(filename);
+    //if(!file) { cerr << "Cannot open "<< filename<< endl; return;}
+    file << fixed << setprecision(8);
+    for(int j=0;j<mesh.y.coord.size();j++){
+        for(int i=0;i<mesh.x.coord.size();i++){
+            file<< mesh.x.coord[i]<< " "<< mesh.y.coord[j]<< endl;
+        }
+    }
+    file.close();
+}
+
+void exportGridSpacing(const Mesh& mesh,const string& xFilename,const string& yFilename){
+    ofstream dxFile(xFilename);
+    ofstream dyFile(yFilename);
+    //if(!dxFile){cerr << "Cannot open "<< xFilename<< endl;return;}
+    //if(!dyFile){cerr << "Cannot open "<< yFilename<< endl;return;}
+    dxFile << fixed << setprecision(8);
+    dyFile << fixed << setprecision(8);
+
+    for(int i=0;i<mesh.x.d.size();i++) dxFile<< mesh.x.coord[i]<< " "<< mesh.x.d[i]<< endl;
+    for(int j=0;j<mesh.y.d.size();j++) dyFile<< mesh.y.coord[j]<< " "<< mesh.y.d[j]<< endl;
+
+    dxFile.close();
+    dyFile.close();
+}
+
+void exportOptimization(const Axis& axis){
+    ofstream file(axis.name +"_optimization.dat");
+    //if(!file){cerr << "Cannot open optimization file\n";return;}
+
+    for(int i=0;i<axis.errorHistory.size();i++) file<< i<< " "<< axis.errorHistory[i]<< endl;
+    
+    file.close();
+}
+
+int main(){
     Mesh mesh;
 
     readInput(mesh);
+
+    mesh.x.name = "X";
+    mesh.y.name = "Y";
 
     buildBodyGeometry(mesh);
 
     buildSegments(mesh.x, mesh.bodies);
     buildSegments(mesh.y, mesh.bodies);
 
+    for(int i=0;i<mesh.x.segments.size();i++){
+        cout<< mesh.x.segments[i].name<< " "<< mesh.x.segments[i].start<< " "<< mesh.x.segments[i].end<< endl;
+    }
+    for(int j=0;j<mesh.y.segments.size();j++){
+        cout<< mesh.y.segments[j].name<< " "<< mesh.y.segments[j].start<< " "<< mesh.y.segments[j].end<< endl;
+    }
+
     buildInterfaces(mesh.x);
     buildInterfaces(mesh.y);
 
     generateAxis(mesh.x);
     generateAxis(mesh.y);
+
+    betaOptimize(mesh.x,mesh.opt.tolerance,mesh.opt.stepSize);
+    betaOptimize(mesh.y,mesh.opt.tolerance,mesh.opt.stepSize);
+
+    exportOptimization(mesh.x);
+    exportOptimization(mesh.y);
+
+    exportMesh(mesh,"mesh.dat");
+
+    exportGridSpacing(mesh,"dx.dat","dy.dat");
+
+    return 0;
 
 }
