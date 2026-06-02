@@ -33,9 +33,9 @@ betaStretchRight   1.05
 XSegments 5
 
 Seg0 StretchLeft   40
-Seg1 Uniform       90
+Seg1 Uniform       100
 Seg2 CompressBoth  50
-Seg3 Uniform       90
+Seg3 Uniform       100
 Seg4 StretchRight  40
 
 # Y Axis
@@ -43,7 +43,7 @@ Seg4 StretchRight  40
 YSegments 3
 
 Seg0 StretchLeft   35
-Seg1 Uniform       90
+Seg1 Uniform       100
 Seg2 StretchRight  35
 
 # Optimization

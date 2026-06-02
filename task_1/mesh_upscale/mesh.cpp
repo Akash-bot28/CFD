@@ -428,6 +428,9 @@ void betaOptimize(Axis& axis, double tolerance, double stepSize){
     cout << "\nOptimization iterations = "<< iter << endl;
     if(iter == axis.itermax) cout << "Stopped due to itermax." << endl;
     else cout << "Converged." << endl;
+    cout << "\nOptimized betas for "<< axis.name<< " axis:\n";
+    for(int i=0; i<axis.segments.size(); i++) cout<< setw(8)<< axis.segments[i].name<< "  "<< setw(15)<< axis.segments[i].beta<< endl;
+
 }
 
 void exportMesh(const Mesh& mesh,const string& filename){
@@ -466,6 +469,27 @@ void exportOptimization(const Axis& axis){
     file.close();
 }
 
+void exportSegmentBoundaries(const Mesh& mesh)
+{
+    ofstream file("interfaces.dat");
+
+    file << "# X\n";
+
+    for(int i=0; i<mesh.x.segments.size()-1; i++)
+    {
+        file << mesh.x.segments[i].end << endl;
+    }
+
+    file << "# Y\n";
+
+    for(int i=0; i<mesh.y.segments.size()-1; i++)
+    {
+        file << mesh.y.segments[i].end << endl;
+    }
+
+    file.close();
+}
+
 int main(){
     Mesh mesh;
 
@@ -479,9 +503,11 @@ int main(){
     buildSegments(mesh.x, mesh.bodies);
     buildSegments(mesh.y, mesh.bodies);
 
+    cout<<"segments along X axis"<<endl;
     for(int i=0;i<mesh.x.segments.size();i++){
         cout<< mesh.x.segments[i].name<< " "<< mesh.x.segments[i].start<< " "<< mesh.x.segments[i].end<< endl;
     }
+    cout<<"segments along Y axis"<<endl;
     for(int j=0;j<mesh.y.segments.size();j++){
         cout<< mesh.y.segments[j].name<< " "<< mesh.y.segments[j].start<< " "<< mesh.y.segments[j].end<< endl;
     }
@@ -501,6 +527,8 @@ int main(){
     exportMesh(mesh,"mesh.dat");
 
     exportGridSpacing(mesh,"dx.dat","dy.dat");
+
+    exportSegmentBoundaries(mesh);
 
     return 0;
 
