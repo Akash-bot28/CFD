@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 print(f"Plotting mesh...")
 
@@ -48,6 +49,17 @@ for xi in x_interfaces:
 
 for yi in y_interfaces:
     plt.plot([x_unique[0], x_unique[-1]],[yi, yi],color='blue',linewidth=0.9,alpha=0.7)
+
+
+with open("preview.dat","r") as file:
+    xmin, xmax, ymin, ymax = map(float,file.readline().split())
+    nBodies = int(file.readline())
+    for _ in range(nBodies):
+        bxmin, bxmax, bymin, bymax = map(float,file.readline().split())
+        body = Rectangle((bxmin, bymin),bxmax-bxmin,bymax-bymin,fill=True,alpha=0.5)
+        plt.gca().add_patch(body)
+
+
 
 plt.axis('equal')
 plt.xlabel('x')

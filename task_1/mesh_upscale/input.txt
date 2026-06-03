@@ -15,7 +15,7 @@ length    1.0
 height    1.0
 
 xc        3.0
-yc        0.0
+yc        2.0
 length    1.0
 height    1.0
 
@@ -38,11 +38,13 @@ Seg4 StretchRight  40
 
 # Y Axis
 
-YSegments 3
+YSegments 5
 
-Seg0 StretchLeft   35
-Seg1 Uniform       100
-Seg2 StretchRight  35
+Seg0 StretchLeft    30
+Seg1 Uniform        80
+Seg2 CompressBoth   20
+Seg3 Uniform        80
+Seg4 StretchRight   30
 
 # Optimization
 
