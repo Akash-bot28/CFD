@@ -1,0 +1,11 @@
+XL  -10
+XR   10
+YB  -6
+YT   6
+
+Nx  80
+Ny  60
+
+betax   1.05
+betay   1.05
+
