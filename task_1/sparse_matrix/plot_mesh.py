@@ -4,7 +4,12 @@ import matplotlib.pyplot as plt
 
 print(f"Plotting mesh ")
 
-data=np.loadtxt(f"mesh.dat")
+# Read Nx Ny
+with open("mesh.dat", "r") as f:
+    Nx, Ny = map(int, f.readline().split())
+    
+# Read coordinates after first line
+data=np.loadtxt(f"mesh.dat", skiprows=1)
 
 x=data[:,0]
 y=data[:,1]

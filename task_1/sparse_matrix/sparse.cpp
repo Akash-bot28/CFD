@@ -7,22 +7,21 @@
 
 using namespace std;
 
-struct MeshParameter{
-    int Nx, Ny, N;
-};
-
 enum class NodeType{
     INTERIOR,   //m.nodeType.assign(p.N, NodeType::INTERIOR);
-    OUTER_BOUNDARY, //i==1 i==Nx j==1 j==Ny
-    BODY_BOUNDARY,
-    BODY_INTERIOR
+    LEFT_BOUNDARY,       //i==1 i==Nx j==1 j==Ny
+    RIGHT_BOUNDARY,
+    BOTTOM_BOUNDARY,
+    TOP_BOUNDARY
+};
+
+struct MeshParameter{
+    int Nx, Ny, N;
 };
 
 struct Mesh{
     vector<double> x;
     vector<double> y;
-    vector<double> dx;
-    vector<double> dy;
 
     vector<NodeType> nodeType;
 };
@@ -43,12 +42,48 @@ struct Field{
 
 void readInput(MeshParameter& p, Mesh& m){
     ifstream meshfile("mesh.dat");
-    ifstream dxfile("dx.dat");
-    ifstream dyfile("dy.dat");
+
+    // Read mesh size
+    meshfile>>p.Nx>>p.Ny;
+    p.N=p.Nx*p.Ny;
+
+    // Allocate memory
+    m.x.resize(p.N);
+    m.y.resize(p.N);
+
+    m.nodeType.assign(p.N, NodeType::INTERIOR);
+
+    // Read coordinates
+    for(int l=0; l<p.N; l++) meshfile >> m.x[l] >> m.y[l];
+    
+    meshfile.close();
+
+    cout << "Nx = " << p.Nx << endl;
+    cout << "Ny = " << p.Ny << endl;
+    cout << "N  = " << p.N  << endl;
 
 }
 
-void generateCoefficient(const MeshParameter& p,const Mesh& m,Coefficient &c){
+void identifyNodes(const MeshParameter& p, Mesh& m){
+    for(int j=0; j<p.Ny; j++)
+    {
+        for(int i=0; i<p.Nx; i++)
+        {
+            int l = i + (j)*p.Nx;
+
+            if(i == 0) m.nodeType[l] = NodeType::LEFT_BOUNDARY;
+            else if(i == p.Nx-1) m.nodeType[l] = NodeType::RIGHT_BOUNDARY;
+            else if(j == 0) m.nodeType[l] = NodeType::BOTTOM_BOUNDARY;
+            else if(j == p.Ny-1) m.nodeType[l] = NodeType::TOP_BOUNDARY;
+            else m.nodeType[l] = NodeType::INTERIOR;
+        }
+        
+    }    
+}
+
+
+
+void generateCoefficient(const MeshParameter& p,Mesh& m,Coefficient& c){
     c.aS.assign(p.N,nan(""));
     c.aW.assign(p.N,nan(""));
     c.aP.assign(p.N,nan(""));
@@ -56,43 +91,101 @@ void generateCoefficient(const MeshParameter& p,const Mesh& m,Coefficient &c){
     c.aN.assign(p.N,nan(""));
     c.bP.assign(p.N,nan(""));
 
-    for(j=2; j<=p.Ny-1; j++){
-        for(i=2; i<=p.Nx-1; i++){
-            l = i + (j)*p.Nx;
+    // for(int j=1;j<p.Ny-1;j++)
+    // {
+    //     for(int i=1;i<p.Nx-1;i++)
+    //     {
+    //         int l=i+j*p.Nx;
+    //         ...
+    //     }
+    // }
+    for(int l=0;l<p.N;l++)
+    {
+        if(m.nodeType[l] != NodeType::INTERIOR) continue;
 
-            dxW = m.dx[i-1];
-            dxE = m.dx[i];
-            dyS = m.dy[j-1];
-            dyN = m.dy[j];
+        double dxW = m.x[l]-m.x[l-1];
+        double dxE = m.x[l+1]-m.x[l];
+        double dyS = m.y[l]-m.y[l-p.Nx];
+        double dyN = m.y[l+p.Nx]-m.y[l];
 
-            // coefficient calculation
-            c.aS[l]=dyN/dyS;
-            c.aW[l]=(dyN*(dyN+dyS))/(dxW*(dxE+dxW));
-            c.aP[l]=-((dyN/dyS)+(dyN*(dyN+dyS))/(dxW*(dxE+dxW))+(dyN*(dyN+dyS))/(dxE*(dxE+dxW))+1);
-            c.aE[l]=(dyN*(dyN+dyS))/(dxE*(dxE+dxW));
-            c.aN[l]=1;
-            c.bp[l]=0;
-
-        }
-    }
-
+        // coefficient calculation
+        c.aS[l]=dyN/dyS;
+        c.aW[l]=(dyN*(dyN+dyS))/(dxW*(dxE+dxW));
+        c.aP[l]=-((dyN/dyS)+(dyN*(dyN+dyS))/(dxW*(dxE+dxW))+(dyN*(dyN+dyS))/(dxE*(dxE+dxW))+1);
+        c.aE[l]=(dyN*(dyN+dyS))/(dxE*(dxE+dxW));
+        c.aN[l]=1;
+        c.bP[l]=0;
+    
+    }       
 }
 
-void DirichletBC(const MeshParameter& p,const Mesh& m,Coefficient& c){
+void initializePhi(const MeshParameter& p,const Mesh& m,Field& f){
+    double phi0=0.0;
+    double U = 100;
+
+    f.phi.assign(p.N,0.0);
+    
+    double XL = m.x[0];
+    double XR = m.x[p.Nx-1];
+    double YB = m.y[0];
+    double YT = m.y[(p.Nx-1)*(p.Ny-1)];
+
+    for(int l=0;l<p.N;l+=p.Nx) f.phi[l]=U*XL+phi0;
+    for(int l=0;l<p.Nx;l++) f.phi[l]=U*m.x[l]+phi0;
+    for(int l=(p.Ny-1)*p.Nx;l<p.N;l++) f.phi[l]=U*m.x[l]+phi0;
+}
+
+// void applyBoundaryValues()
+// {
+//     force apply boundary values of phi in every iteration of solver
+// }
+
+
+
+void BC(const MeshParameter& p,const Mesh& m,Coefficient& c,Field& f){
 
     //left boundary bP<---(bP-aW*(phi-not+U*XL) & aW<---0
     //right boundary bP<---(bP-aE*(phi-not+U*XR) & aE<---0
     //bottom boundary bP---<(bP-aS*(phi-not+U*x) {where XL<x<XR) & aS<---0
     //top boundary bP<---(bP-aT*(phi-not+U*x) {where XL<x<XR) & aT--->0
 
-    if(m.nodeType[l] != NodeType::INTERIOR) continue;
+    for(int l=(1+p.Nx);l<=(1+(p.Ny-2)*p.Nx);l+=p.Nx)             {c.bP[l]=c.bP[l]-c.aW[l]*f.phi[l-1]; c.aW[l]=0;}    //inlet
+    for(int l=((p.Nx-2)+p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l+=p.Nx) {c.aP[l]=c.aP[l]+c.aE[l]; c.aE[l]=0;}              //outlet
+    for(int l=(1+p.Nx);l<=((p.Nx-2)+p.Nx);l++)                   {c.bP[l]=c.bP[l]-c.aS[l]*f.phi[l-p.Nx]; c.aS[l]=0;} //bottom
+    for(int l=(1+(p.Ny-2)*p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l++) {c.bP[l]=c.bP[l]-c.aN[l]*f.phi[l+p.Nx]; c.aN[l]=0;} //top
+
+
 }
 
-void initializePhi(onst MeshParameter& p,const Mesh& m,Field& f){
-    f.phi.assign(p.N,0.0);
-}
+
 
 //void initializePsi(Field& f){}
+
+void exportPhi(const MeshParameter& p,const Mesh& m,const Field& f,string filename){
+    ofstream file(filename);
+    file<<fixed<<setprecision(8);
+
+    file<<p.Nx<<"  "<<p.Ny<<endl;
+    for(int l=0; l<p.N; l++) file << m.x[l]<<" "<<m.y[l]<<" "<<f.phi[l]<<endl;
+
+    file.close();
+}
+
+void exportCoefficient(const MeshParameter& p,Mesh& m,Coefficient& c,string filename){
+    ofstream file(filename);
+    file<< fixed << setprecision(8);
+    for(int l=0; l<p.N; l++)
+    {
+        file << l<<"  "<< m.x[l]<<" "<<m.y[l]<<" "<< c.aS[l]<<"  "<< c.aW[l]<<"  "<< c.aP[l]<<"  "<< c.aE[l]<<"  "<< c.aN[l]<< endl;
+        // if(m.nodeType[l] == NodeType::INTERIOR)
+        // {
+             
+        //     file << l<<"  "<< c.aS[l]<<"  "<< c.aW[l]<<"  "<< c.aP[l]<<"  "<< c.aE[l]<<"  "<< c.aN[l]<< endl;
+        // }
+    }
+}
+
+
 
 
 
@@ -105,9 +198,16 @@ int main(){
 
     readInput(p,m);
 
+    identifyNodes(p,m);
+
     initializePhi(p,m,f);
 
+    exportPhi(p,m,f,"phi field.dat");
+
     generateCoefficient(p,m,c);
+    BC(p,m,c,f);
+
+    exportCoefficient(p,m,c,"banded_sparse_matrix_.dat");
 
     //DirichletBC(p,m,c);
 

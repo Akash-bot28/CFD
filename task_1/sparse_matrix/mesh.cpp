@@ -16,7 +16,6 @@ struct Geometry{
 struct MeshParameters{
     int Nx;
     int Ny;
-    double alpha1, alpha2;
     double betax;
     double betay;
 };
@@ -112,6 +111,7 @@ Mesh generateMesh(const Geometry& g, const MeshParameters& p){
 void exportMesh(const Mesh& mesh, string filename){
     ofstream file(filename);
     file<< fixed << setprecision(8);
+    file<<mesh.Nx<<" "<<mesh.Ny<<endl;
     for(int j=0; j<mesh.Ny; j++){
         for(int i=0; i<mesh.Nx; i++){
             file <<mesh.x[i]<<" "<<mesh.y[j]<<endl;
