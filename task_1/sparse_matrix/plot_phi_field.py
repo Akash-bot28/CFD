@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 with open("phi field.dat") as f:
     Nx, Ny = map(int, f.readline().split())
 
-data = np.loadtxt("phi field.dat", skiprows=1)
+data = np.loadtxt("phi solved.dat", skiprows=1)
 
 x   = data[:,0].reshape(Ny, Nx)
 y   = data[:,1].reshape(Ny, Nx)

@@ -40,7 +40,13 @@ struct Field{
     //vector<double> psi;
 };
 
-void readInput(MeshParameter& p, Mesh& m){
+struct SolverParameter{
+    int itermax;
+    double tolerance;
+    vector<double> error;
+};
+
+void readInput(MeshParameter& p, Mesh& m, SolverParameter& s){
     ifstream meshfile("mesh.dat");
 
     // Read mesh size
@@ -61,6 +67,15 @@ void readInput(MeshParameter& p, Mesh& m){
     cout << "Nx = " << p.Nx << endl;
     cout << "Ny = " << p.Ny << endl;
     cout << "N  = " << p.N  << endl;
+
+    string label;
+    ifstream input("input.txt");
+    while(input>> label)
+    {
+        if(label == "itermax") input >> s.itermax;
+        else if(label == "tolerance") input >> s.tolerance;
+    }
+
 
 }
 
@@ -91,32 +106,44 @@ void generateCoefficient(const MeshParameter& p,Mesh& m,Coefficient& c){
     c.aN.assign(p.N,nan(""));
     c.bP.assign(p.N,nan(""));
 
-    // for(int j=1;j<p.Ny-1;j++)
-    // {
-    //     for(int i=1;i<p.Nx-1;i++)
-    //     {
-    //         int l=i+j*p.Nx;
-    //         ...
-    //     }
-    // }
-    for(int l=0;l<p.N;l++)
+    for(int j=1;j<p.Ny-1;j++)
     {
-        if(m.nodeType[l] != NodeType::INTERIOR) continue;
+        for(int i=1;i<p.Nx-1;i++)
+        {
+            int l=i+j*p.Nx;
+            double dxW = m.x[l]-m.x[l-1];
+            double dxE = m.x[l+1]-m.x[l];
+            double dyS = m.y[l]-m.y[l-p.Nx];
+            double dyN = m.y[l+p.Nx]-m.y[l];
 
-        double dxW = m.x[l]-m.x[l-1];
-        double dxE = m.x[l+1]-m.x[l];
-        double dyS = m.y[l]-m.y[l-p.Nx];
-        double dyN = m.y[l+p.Nx]-m.y[l];
+            // coefficient calculation
+            c.aS[l]=dyN/dyS;
+            c.aW[l]=(dyN*(dyN+dyS))/(dxW*(dxE+dxW));
+            c.aP[l]=-((dyN/dyS)+(dyN*(dyN+dyS))/(dxW*(dxE+dxW))+(dyN*(dyN+dyS))/(dxE*(dxE+dxW))+1);
+            c.aE[l]=(dyN*(dyN+dyS))/(dxE*(dxE+dxW));
+            c.aN[l]=1;
+            c.bP[l]=0;
+        }
+    }
 
-        // coefficient calculation
-        c.aS[l]=dyN/dyS;
-        c.aW[l]=(dyN*(dyN+dyS))/(dxW*(dxE+dxW));
-        c.aP[l]=-((dyN/dyS)+(dyN*(dyN+dyS))/(dxW*(dxE+dxW))+(dyN*(dyN+dyS))/(dxE*(dxE+dxW))+1);
-        c.aE[l]=(dyN*(dyN+dyS))/(dxE*(dxE+dxW));
-        c.aN[l]=1;
-        c.bP[l]=0;
+    // for(int l=0;l<p.N;l++)
+    // {
+    //     if(m.nodeType[l] != NodeType::INTERIOR) continue;
+
+    //     double dxW = m.x[l]-m.x[l-1];
+    //     double dxE = m.x[l+1]-m.x[l];
+    //     double dyS = m.y[l]-m.y[l-p.Nx];
+    //     double dyN = m.y[l+p.Nx]-m.y[l];
+
+    //     // coefficient calculation
+    //     c.aS[l]=dyN/dyS;
+    //     c.aW[l]=(dyN*(dyN+dyS))/(dxW*(dxE+dxW));
+    //     c.aP[l]=-((dyN/dyS)+(dyN*(dyN+dyS))/(dxW*(dxE+dxW))+(dyN*(dyN+dyS))/(dxE*(dxE+dxW))+1);
+    //     c.aE[l]=(dyN*(dyN+dyS))/(dxE*(dxE+dxW));
+    //     c.aN[l]=1;
+    //     c.bP[l]=0;
     
-    }       
+    // }       
 }
 
 void initializePhi(const MeshParameter& p,const Mesh& m,Field& f){
@@ -140,6 +167,20 @@ void initializePhi(const MeshParameter& p,const Mesh& m,Field& f){
 //     force apply boundary values of phi in every iteration of solver
 // }
 
+void applyBoundaryValues(const MeshParameter& p,const Mesh& m,Field& f){
+    double phi0=0.0;
+    double U = 100;
+
+    double XL = m.x[0];
+    double XR = m.x[p.Nx-1];
+    double YB = m.y[0];
+    double YT = m.y[(p.Nx-1)*(p.Ny-1)];
+
+    for(int l=0;l<p.N;l+=p.Nx) f.phi[l]=U*XL+phi0;
+    for(int l=0;l<p.Nx;l++) f.phi[l]=U*m.x[l]+phi0;
+    for(int l=(p.Ny-1)*p.Nx;l<p.N;l++) f.phi[l]=U*m.x[l]+phi0;
+    for(int l=(p.Nx-1);l<p.N;l+=p.Nx) f.phi[l]=f.phi[l-1];
+}
 
 
 void BC(const MeshParameter& p,const Mesh& m,Coefficient& c,Field& f){
@@ -149,12 +190,57 @@ void BC(const MeshParameter& p,const Mesh& m,Coefficient& c,Field& f){
     //bottom boundary bP---<(bP-aS*(phi-not+U*x) {where XL<x<XR) & aS<---0
     //top boundary bP<---(bP-aT*(phi-not+U*x) {where XL<x<XR) & aT--->0
 
-    for(int l=(1+p.Nx);l<=(1+(p.Ny-2)*p.Nx);l+=p.Nx)             {c.bP[l]=c.bP[l]-c.aW[l]*f.phi[l-1]; c.aW[l]=0;}    //inlet
+    for(int l=(1+p.Nx);l<=(1+(p.Ny-2)*p.Nx);l+=p.Nx)               {c.bP[l]=c.bP[l]-c.aW[l]*f.phi[l-1]; c.aW[l]=0;}    //inlet
     for(int l=((p.Nx-2)+p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l+=p.Nx) {c.aP[l]=c.aP[l]+c.aE[l]; c.aE[l]=0;}              //outlet
-    for(int l=(1+p.Nx);l<=((p.Nx-2)+p.Nx);l++)                   {c.bP[l]=c.bP[l]-c.aS[l]*f.phi[l-p.Nx]; c.aS[l]=0;} //bottom
-    for(int l=(1+(p.Ny-2)*p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l++) {c.bP[l]=c.bP[l]-c.aN[l]*f.phi[l+p.Nx]; c.aN[l]=0;} //top
+    for(int l=(1+p.Nx);l<=((p.Nx-2)+p.Nx);l++)                     {c.bP[l]=c.bP[l]-c.aS[l]*f.phi[l-p.Nx]; c.aS[l]=0;} //bottom
+    for(int l=(1+(p.Ny-2)*p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l++)   {c.bP[l]=c.bP[l]-c.aN[l]*f.phi[l+p.Nx]; c.aN[l]=0;} //top
 
 
+}
+
+
+
+void Solver(SolverParameter& s,const MeshParameter& p,const Mesh& m,const Coefficient& c,Field& f){
+    double rms;
+    const int Ninterior = (p.Nx - 2) * (p.Ny - 2);
+    
+    int n;
+    for(n =0; n < s.itermax; n++){
+        double sumofsquares = 0.0;
+        for(int j = 1; j < p.Ny - 1; j++){
+            for(int i = 1; i < p.Nx - 1; i++){
+                int l = i + j * p.Nx;
+                // Gauss-Seidel update
+                f.phi[l] = (c.bP[l] - c.aS[l]*f.phi[l-p.Nx] - c.aW[l]*f.phi[l-1] - c.aE[l]*f.phi[l+1] - c.aN[l]*f.phi[l+p.Nx]) / c.aP[l];
+            }
+        }
+
+        for(int j = 1; j < p.Ny - 1; j++){
+            for(int i = 1; i < p.Nx - 1; i++){
+                int l = i + j * p.Nx;
+                // Residual
+                double r = c.bP[l] - c.aS[l]*f.phi[l-p.Nx] - c.aW[l]*f.phi[l-1] - c.aP[l]*f.phi[l] - c.aE[l]*f.phi[l+1] - c.aN[l]*f.phi[l+p.Nx]; 
+                sumofsquares += r*r;
+            }
+        }
+        
+        rms = sqrt(sumofsquares / Ninterior);
+        s.error.push_back(rms);
+
+        if(n==0) cout << "RMS at iteration 0 = "<< rms << endl;
+
+        if( rms<= s.tolerance) break;
+
+        applyBoundaryValues(p,m,f);
+
+    }
+
+
+    cout << "\nSolver iterations = "<< n << endl;
+    if(n == s.itermax)
+        cout << "Stopped due to itermax." << endl;
+    else
+        cout << "Converged." << endl;
 }
 
 
@@ -185,6 +271,14 @@ void exportCoefficient(const MeshParameter& p,Mesh& m,Coefficient& c,string file
     }
 }
 
+void exportSolverData(const SolverParameter& s,const MeshParameter& p,const Mesh& m,const Coefficient& c,Field& f,string filename){
+    ofstream file(filename);
+    file<<fixed<<setprecision(8);
+    for(int n=0; n<s.error.size();n++){
+        file<<n<<"  "<<s.error[n]<<endl;
+    }
+}
+
 
 
 
@@ -195,8 +289,9 @@ int main(){
     Mesh m;
     Coefficient c;
     Field f;
+    SolverParameter s;
 
-    readInput(p,m);
+    readInput(p,m,s);
 
     identifyNodes(p,m);
 
@@ -205,11 +300,16 @@ int main(){
     exportPhi(p,m,f,"phi field.dat");
 
     generateCoefficient(p,m,c);
+
     BC(p,m,c,f);
 
     exportCoefficient(p,m,c,"banded_sparse_matrix_.dat");
 
-    //DirichletBC(p,m,c);
+    Solver(s,p,m,c,f);
+    
+    exportSolverData(s,p,m,c,f,"error_converge.dat");
+ 
+    exportPhi(p,m,f,"phi solved.dat");
 
     return 0;
 }

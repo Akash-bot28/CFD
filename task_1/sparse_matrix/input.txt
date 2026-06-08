@@ -9,3 +9,7 @@ Ny  60
 betax   1.05
 betay   1.05
 
+itermax   100000
+tolerance   0.001
+
+
