@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-print("potting convergence")
+print("plotting convergence")
 
 data = np.loadtxt("error_converge.dat")
 
