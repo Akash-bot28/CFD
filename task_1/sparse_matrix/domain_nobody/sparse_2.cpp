@@ -119,29 +119,7 @@ void initializePhi(const MeshParameter& p,const Mesh& m,Field& f){
     for(int i=0; i<p.Nx; i++) f.phi[i][p.Ny-1] = U*m.x[i][p.Ny-1] + phi0;
 }
 
-// void initializePsi(const MeshParameter& p,const Mesh& m,Field& f){
-//     double psi0 = 0.0;
-//     double U = 100.0;
-
-//     f.psi.assign(p.Nx,vector<double>(p.Ny,0.0));
-
-//     double YB = m.y[0][0];
-//     double YT = m.y[0][p.Ny-1];
-
-//     // Left boundary (inlet)
-//     for(int j=0; j<p.Ny; j++) f.psi[0][j] = U*m.y[0][j] + psi0;
-
-//     // Right boundary (outlet)
-//     for(int j=0; j<p.Ny; j++) f.psi[p.Nx-1][j] = U*m.y[p.Nx-1][j] + psi0;
-
-//     // Bottom boundary
-//     for(int i=0; i<p.Nx; i++) f.psi[i][0] = U*YB + psi0;
-
-//     // Top boundary
-//     for(int i=0; i<p.Nx; i++) f.psi[i][p.Ny-1] = U*YT + psi0;
-
-// }
-
+/*
 void applyBoundaryValuesPhi(const MeshParameter& p,const Mesh& m,Field& f){
     double phi0 = 0.0;
     double U    = 100.0;
@@ -162,72 +140,30 @@ void applyBoundaryValuesPhi(const MeshParameter& p,const Mesh& m,Field& f){
     // Top boundary
     for(int i=0; i<p.Nx; i++) f.phi[i][p.Ny-1] = U*m.x[i][p.Ny-1] + phi0;
 }
-
-// void applyBoundaryValuesPsi(const MeshParameter& p,const Mesh& m,Field& f){
-//     double psi0 = 0.0;
-//     double U = 100.0;
-
-//     double YB = m.y[0][0];
-//     double YT = m.y[0][p.Ny-1];
-
-//     // Left boundary (inlet)
-//     for(int j=0; j<p.Ny; j++) f.psi[0][j] = U*m.y[0][j] + psi0;
-
-//     // Right boundary (outlet)
-//     for(int j=0; j<p.Ny; j++) f.psi[p.Nx-1][j] = U*m.y[p.Nx-1][j] + psi0;
-
-//     // Bottom boundary
-//     for(int i=0; i<p.Nx; i++) f.psi[i][0] = U*YB + psi0;
-
-//     // Top boundary
-//     for(int i=0; i<p.Nx; i++) f.psi[i][p.Ny-1] = U*YT + psi0;
-// }
-
-
-void BC(const MeshParameter& p,const Mesh& m,Coefficient& c,Field& f){
-    // Left boundary (Dirichlet)
-    for(int j=1; j<p.Ny-1; j++) {int i = 1; c.bP[i][j] = c.bP[i][j] - c.aW[i][j]*f.phi[i-1][j]; c.aW[i][j] = 0.0;}
+*/
+void BCPhi(const MeshParameter& p,const Mesh& m,Coefficient& c,Field& f){
+    // Adjacent Left boundary (Dirichlet)
+    for(int j=1; j<=p.Ny-2; j++) {int i = 1; c.bP[i][j] = c.bP[i][j] - c.aW[i][j]*f.phi[i-1][j]; c.aW[i][j] = 0.0;}
     
-    // Right boundary (Neumann)
-    for(int j=1; j<p.Ny-1; j++) {int i = p.Nx-2; c.aP[i][j] = c.aP[i][j] + c.aE[i][j]; c.aE[i][j] = 0.0;}
+    // Adjacent Right boundary (Neumann)(convective boundary condition)
+    //for(int j=1; j<=p.Ny-2; j++) {int i = p.Nx-2; c.aP[i][j] = c.aP[i][j] + c.aE[i][j]; c.aE[i][j] = 0.0;}
     
-    // Right boundary (Dirichlet)
-    //for(int j=1; j<p.Ny-1; j++) {int i = p.Nx-2; c.bP[i][j] = c.bP[i][j] - c.aE[i][j]*f.phi[i+1][j];c.aE[i][j] = 0.0;}
+    // Adjacent Right boundary (Dirichlet)
+    for(int j=1; j<=p.Ny-2; j++) {int i = p.Nx-2; c.bP[i][j] = c.bP[i][j] - c.aE[i][j]*f.phi[i+1][j];c.aE[i][j] = 0.0;}
     
-    // Bottom boundary (Dirichlet)
-    for(int i=1; i<p.Nx-1; i++) {int j = 1; c.bP[i][j] = c.bP[i][j] - c.aS[i][j]*f.phi[i][j-1]; c.aS[i][j] = 0.0;}
+    // Adjacent Bottom boundary (Dirichlet)
+    for(int i=1; i<=p.Nx-2; i++) {int j = 1; c.bP[i][j] = c.bP[i][j] - c.aS[i][j]*f.phi[i][j-1]; c.aS[i][j] = 0.0;}
    
-    // Top boundary (Dirichlet)
-    for(int i=1; i<p.Nx-1; i++) {int j = p.Ny-2; c.bP[i][j] = c.bP[i][j] - c.aN[i][j]*f.phi[i][j+1]; c.aN[i][j] = 0.0;}
-   
-    // Bottom boundary (Neumann)
-    //for(int i=1; i<p.Nx-1; i++) {int j = 1; c.aP[i][j] = c.aP[i][j] + c.aS[i][j]; c.aS[i][j] = 0.0;}
-   
-    // Top boundary (Neumann)
-    //for(int i=1; i<p.Nx-1; i++) {int j = p.Ny-2; c.aP[i][j] = c.aP[i][j] + c.aN[i][j]; c.aN[i][j] = 0.0;}
-   
-    
+    // Adjacent Top boundary (Dirichlet)
+    for(int i=1; i<=p.Nx-2; i++) {int j = p.Ny-2; c.bP[i][j] = c.bP[i][j] - c.aN[i][j]*f.phi[i][j+1]; c.aN[i][j] = 0.0;}
 }
-
-// Vector<double> matVecMultiply(const vector<vector<double>>& A,const vector<double>& x){
-//     int rows = A.size();
-//     int cols = A[0].size();
-
-//     vector<double> y(rows,0.0);
-//     for(int i=0; i<rows; i++){
-//         for(int j=0; j<cols; j++){
-//             y[i]=Yy[i]+A[i][j]*x[j];
-//         }
-//     }
-//     return y;
-// }
 
 void Gauss_Seidel(SolverParameter& s,const MeshParameter& p,const Mesh& m,const Coefficient& c,Field& f){
     double rms;
     const int Ninterior =(p.Nx-2)*(p.Ny-2);
 
     int n;
-    for(n=0; n<s.itermax; n++){
+    for(n=1; n<s.itermax; n++){
         // Gauss-Seidel sweep
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
@@ -248,8 +184,6 @@ void Gauss_Seidel(SolverParameter& s,const MeshParameter& p,const Mesh& m,const 
 
         if(rms <= s.tolerance) break;
 
-        applyBoundaryValuesPhi(p,m,f);
-
     }
 
     cout << "\nSolver iterations = "<< n << endl;
@@ -264,7 +198,7 @@ void Jacobi(SolverParameter& s,const MeshParameter& p,const Mesh& m,const Coeffi
     vector<vector<double>> phiNew = f.phi;
 
     int n;
-    for(n=0; n<s.itermax; n++){
+    for(n=1; n<s.itermax; n++){
         // Jacobi update
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
@@ -298,13 +232,53 @@ void Jacobi(SolverParameter& s,const MeshParameter& p,const Mesh& m,const Coeffi
 
         if(rms <= s.tolerance) break;
 
-        applyBoundaryValuesPhi(p,m,f);
-
     }
 
     cout << "\nSolver iterations = "<< n << endl;
 
     if(n == s.itermax)cout << "Stopped due to itermax."<< endl;
+    else cout << "Converged."<< endl;
+}
+
+double matVecProduct(const Coefficient& c,const vector<vector<double>>& phi, int i, int j){
+    return c.aS[i][j]*phi[i][j-1] + c.aW[i][j]*phi[i-1][j] + c.aP[i][j]*phi[i][j] + c.aE[i][j]*phi[i+1][j] + c.aN[i][j]*phi[i][j+1];
+}
+
+void Gauss_Seidel_new(SolverParameter& s,const MeshParameter& p,const Mesh& m, const Coefficient& c,Field& f){
+    double rms;
+    const int Ninterior =(p.Nx-2)*(p.Ny-2);
+
+    int n;
+    for(n=1; n<s.itermax; n++){
+        for(int j=1; j<p.Ny-1; j++){
+            for(int i=1; i<p.Nx-1; i++){
+
+                double Aphi_P = matVecProduct(c,f.phi,i,j);
+                f.phi[i][j] += 1.5*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
+            }
+        }
+
+        // Residual calculation
+        double sumofsquares = 0.0;
+        for(int j=1; j<p.Ny-1; j++){
+            for(int i=1; i<p.Nx-1; i++){
+                double Aphi_P = matVecProduct(c,f.phi,i,j);
+                double residual = c.bP[i][j]- Aphi_P;
+                sumofsquares += residual*residual; 
+            }
+        }
+
+        rms = sqrt(sumofsquares/Ninterior);
+        s.error.push_back(rms);
+
+        if(rms <= s.tolerance) break;
+
+        for(int j=0; j<p.Ny; j++) f.phi[p.Nx-1][j] = f.phi[p.Nx-2][j];
+
+    }
+
+    cout << "\nPHI GS iterations = "<< n << endl;
+    if(n == s.itermax) cout << "Stopped due to itermax." << endl;
     else cout << "Converged."<< endl;
 }
 
@@ -318,20 +292,6 @@ void exportPhi(const MeshParameter& p,const Mesh& m,const Field& f,string filena
         }
     }
 
-    file.close();
-}
-
-void exportPsi(const MeshParameter& p,const Mesh& m,const Field& f,string filename){
-    ofstream file(filename);
-
-    file<<fixed<<setprecision(8);
-    file<<p.Nx<<" "<<p.Ny<<endl;
-
-    for(int j=0;j<p.Ny;j++){
-        for(int i=0;i<p.Nx;i++){
-            file<<m.x[i][j]<<" "<<m.y[i][j]<<" "<<f.psi[i][j]<<endl;
-        }
-    }
     file.close();
 }
 
@@ -383,14 +343,15 @@ int main(){
 
     generateCoefficient(p,m,c);
 
-    BC(p,m,c,f);
+    BCPhi(p,m,c,f);
 
-    exportCoefficient(p,m,c,"banded_sparse_matrix_.dat");
+    //exportCoefficient(p,m,c,"banded_sparse_matrix_.dat");
 
-    Gauss_Seidel(s,p,m,c,f);
+    //Gauss_Seidel(s,p,m,c,f);
     //Jacobi(s,p,m,c,f);
+    Gauss_Seidel_new(s,p,m,c,f);
     
-    exportSolverData(s,p,m,c,f,"error_converge.dat");
+    exportSolverData(s,p,m,c,f,"phi_error_converge.dat");
  
     exportPhi(p,m,f,"phi_solved.dat");
 
