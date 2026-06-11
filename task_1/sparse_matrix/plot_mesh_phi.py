@@ -25,18 +25,17 @@ x   = data_phi[:,0].reshape(Ny, Nx)
 y   = data_phi[:,1].reshape(Ny, Nx)
 phi = data_phi[:,2].reshape(Ny, Nx)
 
-# Read psi field
-# with open("psi_solved.dat") as f:
-#     Nx2, Ny2 = map(int, f.readline().split())
+#Read psi field
+with open("psi_solved.dat") as f:
+    Nx2, Ny2 = map(int, f.readline().split())
 
-# data_psi = np.loadtxt("psi_solved.dat", skiprows=1)
+data_psi = np.loadtxt("psi_solved.dat", skiprows=1)
 
-# psi = data_psi[:,2].reshape(Ny2, Nx2)
+psi = data_psi[:,2].reshape(Ny2, Nx2)
 
 
-# ==================================================
 # Plot
-# ==================================================
+
 plt.figure(figsize=(20,15))
 
 # ---- Mesh ----
@@ -47,11 +46,11 @@ for yj in y_unique:
     plt.plot([x_unique[0], x_unique[-1]],[yj, yj],'k',linewidth=0.3,alpha=0.5)
 
 # ---- Iso-phi lines ----
-phi_contours = plt.contour(x,y,phi,levels=30,colors="red",linewidths=0.7)
-#psi_contours = plt.contour(x,y,psi,levels=30,colors="blue",linewidths=0.7)
+phi_contours = plt.contour(x,y,phi,levels=100,colors="red",linewidths=0.7)
+psi_contours = plt.contour(x,y,psi,levels=60,colors="blue",linewidths=0.7)
 
 
-plt.clabel(phi_contours,inline=True,fontsize=7)
+#plt.clabel(phi_contours,inline=True,fontsize=7)
 #plt.clabel(psi_contours,inline=True,fontsize=7)
 
 plt.xlabel("x")

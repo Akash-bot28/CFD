@@ -9,7 +9,6 @@ using namespace std;
 
 struct Domain{
     double XL,XR,YB,YT;
-    
 };
 struct Body{
     double XLs,XRs,YBs,YTs;
@@ -79,8 +78,8 @@ void readInput(Domain& d,Body& b,MeshParameter& p, Mesh& m, SolverParameter& s){
         else if(label == "XRs") input >> b.XRs;
         else if(label == "YBs") input >> b.YBs;
         else if(label == "YTs") input >> b.YTs;
-        if(label == "itermax") input >> s.itermax;
-        else if(label == "tolerance") input >> s.tolerance;
+        else if(label == "solver_itermax") input >> s.itermax;
+        else if(label == "solver_tolerance") input >> s.tolerance;
     }
 
 
@@ -201,7 +200,7 @@ void BCBodyPhi(const Body& b,const MeshParameter& p,Coefficient& c,Field& f){
     //Top
     for(int i=b.iL ;i<=b.iR ;i++) {int j=(b.jT+1) ; c.aP[i][j] = c.aP[i][j] + c.aS[i][j];; c.aS[i][j] = 0.0;}
 }
-
+/*
 void deactivateBodyNodes(const Body& b,Coefficient& c){
     for(int j=b.jB; j<=b.jT; j++){
         for(int i=b.iL; i<=b.iR; i++){
@@ -214,12 +213,12 @@ void deactivateBodyNodes(const Body& b,Coefficient& c){
         }
     }
 }
-
+*/
 double matVecProduct(const Coefficient& c,const vector<vector<double>>& phi, int i, int j){
     return c.aS[i][j]*phi[i][j-1] + c.aW[i][j]*phi[i-1][j] + c.aP[i][j]*phi[i][j] + c.aE[i][j]*phi[i+1][j] + c.aN[i][j]*phi[i][j+1];
 }
 
-void SOR(SolverParameter& s,const MeshParameter& p,const Mesh& m, const Coefficient& c,Field& f){
+void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& m, const Coefficient& c,Field& f){
     double rms;
     const int Ninterior =(p.Nx-2)*(p.Ny-2);
 
@@ -228,26 +227,34 @@ void SOR(SolverParameter& s,const MeshParameter& p,const Mesh& m, const Coeffici
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
 
+                if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
+
                 double Aphi_P = matVecProduct(c,f.phi,i,j);
-                f.phi[i][j] += 1.0*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
+                f.phi[i][j] += 1.5*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
             }
         }
 
         // Residual calculation
+        int  active_nodes=0;
         double sumofsquares = 0.0;
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
+
+                if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
+
                 double Aphi_P = matVecProduct(c,f.phi,i,j);
                 double residual = c.bP[i][j]- Aphi_P;
                 sumofsquares += residual*residual; 
+                active_nodes++;
             }
         }
 
-        rms = sqrt(sumofsquares/Ninterior);
+        rms = sqrt(sumofsquares/active_nodes);
         s.error.push_back(rms);
 
-        cout << "RMS = " << rms << endl;
         if(rms <= s.tolerance) break;
+
+        //if(n%100==0) cout<< n<<endl;
 
     }
 
@@ -317,8 +324,6 @@ int main(){
 
     initializePhi(d,p,m,f);
 
-    findBodyIndices(b,p,m);
-
     //exportPhi(p,m,f,"phi field.dat");
 
     generateCoefficient(p,m,c);
@@ -326,17 +331,16 @@ int main(){
     BCPhi(p,c,f);
 
     findBodyIndices(b,p,m);
-    cout << b.iL <<" "<< b.iR <<" "<< b.jB <<" "<< b.jT << endl;
+    //cout << b.iL <<" "<< b.iR <<" "<< b.jB <<" "<< b.jT << endl;
     BCBodyPhi(b,p,c,f);
-    deactivateBodyNodes(b,c);
-
+    //deactivateBodyNodes(b,c);
     //exportCoefficient(p,m,c,"banded_sparse_matrix_.dat");
 
     //Gauss_Seidel(s,p,m,c,f);
     //Jacobi(s,p,m,c,f);
-    SOR(s,p,m,c,f);
+    SOR(s,b,p,m,c,f);
     
-    exportSolverData(s,p,m,c,f,"phi_error_converge.dat");
+    //exportSolverData(s,p,m,c,f,"phi_error_converge.dat");
  
     exportPhi(p,m,f,"phi_solved.dat");
 

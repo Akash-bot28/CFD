@@ -39,4 +39,4 @@ mesh_tolerance   0.00001
 beta_stepsize   0.000001
 
 solver_itermax   100000
-solver_tolerance   0.001
+solver_tolerance   0.01
