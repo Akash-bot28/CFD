@@ -40,3 +40,4 @@ beta_stepsize   0.000001
 
 solver_itermax   100000
 solver_tolerance   0.01
+W                 1.9842

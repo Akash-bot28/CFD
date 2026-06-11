@@ -14,6 +14,7 @@ struct Domain{
 struct Body{
     double XLs,XRs,YBs,YTs;
     int iL,iR,jB,jT;
+    vector<vector<double>> mask;
 };
 
 struct MeshParameter{
@@ -41,6 +42,7 @@ struct Field{
 struct SolverParameter{
     int itermax;
     double tolerance;
+    double W;
     vector<double> error;
 };
 
@@ -78,6 +80,7 @@ void readInput(Domain& d,Body& b,MeshParameter& p, Mesh& m, SolverParameter& s){
         else if(label == "YTs") input >> b.YTs;
         else if(label == "solver_itermax") input >> s.itermax;
         else if(label == "solver_tolerance") input >> s.tolerance;
+        else if(label == "W") input >> s.W;
     }
 }
 
@@ -130,27 +133,6 @@ void initializePsi(const MeshParameter& p,const Mesh& m,Field& f){
 
 }
 
-/*
-void applyBoundaryValuesPsi(const MeshParameter& p,const Mesh& m,Field& f){
-    double psi0 = 0.0;
-    double U = 100.0;
-
-    double YB = m.y[0][0];
-    double YT = m.y[0][p.Ny-1];
-
-    // Left boundary (inlet)
-    for(int j=0; j<p.Ny; j++) f.psi[0][j] = U*m.y[0][j] + psi0;
-
-    // Right boundary (outlet)
-    for(int j=0; j<p.Ny; j++) f.psi[p.Nx-1][j] = U*m.y[p.Nx-1][j] + psi0;
-
-    // Bottom boundary
-    for(int i=0; i<p.Nx; i++) f.psi[i][0] = U*YB + psi0;
-
-    // Top boundary
-    for(int i=0; i<p.Nx; i++) f.psi[i][p.Ny-1] = U*YT + psi0;
-}
-*/
 void BCPsi(const MeshParameter& p,Coefficient& c,Field& f){
     // Adjacent Left boundary (Dirichlet)
     for(int j=1; j<=p.Ny-2; j++) {int i = 1; c.bP[i][j] = c.bP[i][j] - c.aW[i][j]*f.psi[i-1][j]; c.aW[i][j] = 0.0;}
@@ -181,6 +163,17 @@ void findBodyIndices(Body& b,const MeshParameter& p,const Mesh& m){
         if(abs(m.y[0][j]-b.YTs)<tol) b.jT=j;
     }
 }
+
+void buildMask(Body& b,const MeshParameter& p){
+    b.mask.assign(p.Nx,vector<double>(p.Ny,1.0));
+
+    for(int j=b.jB; j<=b.jT; j++){
+        for(int i=b.iL; i<=b.iR; i++){
+            b.mask[i][j]=0.0;
+        }
+    }
+}
+
 void BCBodyPsi(const Body& b,const MeshParameter& p,Coefficient& c,Field& f){
     double U=100.0;
 
@@ -202,7 +195,10 @@ void BCBodyPsi(const Body& b,const MeshParameter& p,Coefficient& c,Field& f){
 double matVecProduct(const Coefficient& c,const vector<vector<double>>& phi, int i, int j){
     return c.aS[i][j]*phi[i][j-1] + c.aW[i][j]*phi[i-1][j] + c.aP[i][j]*phi[i][j] + c.aE[i][j]*phi[i+1][j] + c.aN[i][j]*phi[i][j+1];
 }
+
 void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& m, const Coefficient& c,Field& f){
+    
+    cout<<"\nSolving Psi..."<<endl;
     double rms;
     const int Ninterior =(p.Nx-2)*(p.Ny-2);
 
@@ -211,10 +207,10 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& m, 
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
 
-                if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
+                //if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
 
                 double Aphi_P = matVecProduct(c,f.psi,i,j);
-                f.psi[i][j] += 1.5*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
+                f.psi[i][j] += b.mask[i][j]*s.W*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
             }
         }
 
@@ -224,22 +220,19 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& m, 
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
 
-                if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
+                //if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
 
                 double Aphi_P = matVecProduct(c,f.psi,i,j);
                 double residual = c.bP[i][j]- Aphi_P;
-                sumofsquares += residual*residual; 
-                active_nodes++;
+                sumofsquares += b.mask[i][j]*residual*residual; 
+                active_nodes += b.mask[i][j];
             }
         }
-
         rms = sqrt(sumofsquares/active_nodes);
         s.error.push_back(rms);
 
         if(rms <= s.tolerance) break;
-
     }
-
     cout << "\nPSI SOR iterations = "<< n << endl;
     if(n == s.itermax) cout << "Stopped due to itermax." << endl;
     else cout << "Converged."<< endl;
@@ -289,6 +282,7 @@ int main(){
 
     findBodyIndices(b,p,m);
     BCBodyPsi(b,p,c,f);
+    buildMask(b,p);
     //exportCoefficient(p,m,c,"banded_sparse_matrix_.dat");
 
     //Gauss_Seidel(s,p,m,c,f);
