@@ -7,6 +7,15 @@
 
 using namespace std;
 
+struct Domain{
+    double XL,XR,YB,YT;
+    
+};
+struct Body{
+    double XLs,XRs,YBs,YTs;
+    int iL,iR,jB,jT;
+};
+
 struct MeshParameter{
     int Nx, Ny, N;
 };
@@ -36,7 +45,7 @@ struct SolverParameter{
     vector<double> error;
 };
 
-void readInput(MeshParameter& p, Mesh& m, SolverParameter& s){
+void readInput(Domain& d,Body& b,MeshParameter& p, Mesh& m, SolverParameter& s){
     ifstream file("mesh.dat");
 
     // Read mesh size
@@ -62,6 +71,14 @@ void readInput(MeshParameter& p, Mesh& m, SolverParameter& s){
     ifstream input("input.txt");
     while(input>> label)
     {
+        if(label == "XL") input >> d.XL;
+        else if(label == "XR") input >> d.XR;
+        else if(label == "YB") input >> d.YB;
+        else if(label == "YT") input >> d.YT;
+        else if(label == "XLs") input >> b.XLs;
+        else if(label == "XRs") input >> b.XRs;
+        else if(label == "YBs") input >> b.YBs;
+        else if(label == "YTs") input >> b.YTs;
         if(label == "itermax") input >> s.itermax;
         else if(label == "tolerance") input >> s.tolerance;
     }
@@ -97,20 +114,20 @@ void generateCoefficient(const MeshParameter& p,Mesh& m,Coefficient& c){
         
 }
 
-void initializePhi(const MeshParameter& p,const Mesh& m,Field& f){
+void initializePhi(const Domain& d, const MeshParameter& p,const Mesh& m,Field& f){
     double phi0 = 0.0;
     double U = 100.0;
 
     f.phi.assign(p.Nx,vector<double>(p.Ny,0.0));
 
-    double XL = m.x[0][0];
-    double XR = m.x[p.Nx-1][0];
+    //double XL = m.x[0][0];
+    //double XR = m.x[p.Nx-1][0];
 
     // Left boundary (inlet)
-    for(int j=0; j<p.Ny; j++) f.phi[0][j] = U*XL + phi0;
+    for(int j=0; j<p.Ny; j++) f.phi[0][j] = U*d.XL + phi0;
 
     // Right boundary (outlet)
-    for(int j=0; j<p.Ny; j++) f.phi[p.Nx-1][j] =U*XR + phi0;
+    for(int j=0; j<p.Ny; j++) f.phi[p.Nx-1][j] =U*d.XR + phi0;
     
     // Bottom boundary
     for(int i=0; i<p.Nx; i++) f.phi[i][0] = U*m.x[i][0] + phi0;
@@ -158,18 +175,44 @@ void BCPhi(const MeshParameter& p,Coefficient& c,Field& f){
     for(int i=1; i<=p.Nx-2; i++) {int j = p.Ny-2; c.bP[i][j] = c.bP[i][j] - c.aN[i][j]*f.phi[i][j+1]; c.aN[i][j] = 0.0;}
 }
 
-void BCBodyPhi(const MeshParameter& p,Coefficient& c,Field& f){
-    // Left wall
-    for(int j= ;j<= ;j++) {int i= ; c.bP[i][j] = c.bP[i][j] - c.aE[i][j]*f.phi[i+1][j];c.aE[i][j] = 0.0;}
+void findBodyIndices(Body& b,const MeshParameter& p,const Mesh& m){
+    double tol = 1e-5;
+    for(int i=0;i<p.Nx;i++){
+        if(abs(m.x[i][0]-b.XLs)<tol) b.iL=i;
+        if(abs(m.x[i][0]-b.XRs)<tol) b.iR=i;
+    }
 
-    // Right wall
-    for(int j= ;j<= ;j++) {int i= ; c.bP[i][j] = c.bP[i][j] - c.aW[i][j]*f.phi[i-1][j]; c.aW[i][j] = 0.0;}
+    for(int j=0;j<p.Ny;j++){
+        if(abs(m.y[0][j]-b.YBs)<tol) b.jB=j;
+        if(abs(m.y[0][j]-b.YTs)<tol) b.jT=j;
+    }
+}
 
-    // Bottom wall
-    for(int i= ;i<= ;i++) {int j= ; c.bP[i][j] = c.bP[i][j] - c.aN[i][j]*f.phi[i][j+1]; c.aN[i][j] = 0.0;}
+void BCBodyPhi(const Body& b,const MeshParameter& p,Coefficient& c,Field& f){
+    // Left
+    for(int j=b.jB ;j<=b.jT ;j++) {int i=(b.iL-1) ; c.aP[i][j] = c.aP[i][j] + c.aE[i][j];;c.aE[i][j] = 0.0;}
 
-    //Top wall
-    for(int i= ;i<= ;j++) {int j= ; c.bP[i][j] = c.bP[i][j] - c.aS[i][j]*f.phi[i][j-1]; c.aS[i][j] = 0.0;}
+    // Right
+    for(int j=b.jB ;j<=b.jT ;j++) {int i=(b.iR+1) ; c.aP[i][j] = c.aP[i][j] + c.aW[i][j];; c.aW[i][j] = 0.0;}
+
+    // Bottom
+    for(int i=b.iL ;i<=b.iR ;i++) {int j=(b.jB-1); c.aP[i][j] = c.aP[i][j] + c.aN[i][j];; c.aN[i][j] = 0.0;}
+
+    //Top
+    for(int i=b.iL ;i<=b.iR ;i++) {int j=(b.jT+1) ; c.aP[i][j] = c.aP[i][j] + c.aS[i][j];; c.aS[i][j] = 0.0;}
+}
+
+void deactivateBodyNodes(const Body& b,Coefficient& c){
+    for(int j=b.jB; j<=b.jT; j++){
+        for(int i=b.iL; i<=b.iR; i++){
+            c.aS[i][j]=0.0;
+            c.aW[i][j]=0.0;
+            c.aE[i][j]=0.0;
+            c.aN[i][j]=0.0;
+            c.aP[i][j]=1.0;
+            c.bP[i][j]=0.0;
+        }
+    }
 }
 
 double matVecProduct(const Coefficient& c,const vector<vector<double>>& phi, int i, int j){
@@ -186,7 +229,7 @@ void SOR(SolverParameter& s,const MeshParameter& p,const Mesh& m, const Coeffici
             for(int i=1; i<p.Nx-1; i++){
 
                 double Aphi_P = matVecProduct(c,f.phi,i,j);
-                f.phi[i][j] += 1.5*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
+                f.phi[i][j] += 1.0*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
             }
         }
 
@@ -203,13 +246,14 @@ void SOR(SolverParameter& s,const MeshParameter& p,const Mesh& m, const Coeffici
         rms = sqrt(sumofsquares/Ninterior);
         s.error.push_back(rms);
 
+        cout << "RMS = " << rms << endl;
         if(rms <= s.tolerance) break;
-
-        for(int j=0; j<p.Ny; j++) f.phi[p.Nx-1][j] = f.phi[p.Nx-2][j];
 
     }
 
-    cout << "\nPHI GS iterations = "<< n << endl;
+    if(n==1) cout << "RMS = " << rms << endl;
+
+    cout << "\nPHI SOR iterations = "<< n << endl;
     if(n == s.itermax) cout << "Stopped due to itermax." << endl;
     else cout << "Converged."<< endl;
 }
@@ -261,21 +305,30 @@ void exportSolverData(const SolverParameter& s,const MeshParameter& p,const Mesh
 
 int main(){
 
+    Domain d;
+    Body b;
     MeshParameter p;
     Mesh m;
     Coefficient c;
     Field f;
     SolverParameter s;
 
-    readInput(p,m,s);
+    readInput(d,b,p,m,s);
 
-    initializePhi(p,m,f);
+    initializePhi(d,p,m,f);
 
-    exportPhi(p,m,f,"phi field.dat");
+    findBodyIndices(b,p,m);
+
+    //exportPhi(p,m,f,"phi field.dat");
 
     generateCoefficient(p,m,c);
 
-    BCPhi(p,m,c,f);
+    BCPhi(p,c,f);
+
+    findBodyIndices(b,p,m);
+    cout << b.iL <<" "<< b.iR <<" "<< b.jB <<" "<< b.jT << endl;
+    BCBodyPhi(b,p,c,f);
+    deactivateBodyNodes(b,c);
 
     //exportCoefficient(p,m,c,"banded_sparse_matrix_.dat");
 

@@ -3,9 +3,15 @@ XR   10
 YB  -6
 YT   6
 
+XLs -0.5
+XRs  0.5
+YBs -0.5
+YTs  0.5
+
+
+
 XC   0.0
 YC   0.0
-
 a    1.0
 
 Nx1  41
@@ -27,11 +33,10 @@ betay1   1.1
 betays   200.0
 betay2   1.2
 
-itermaxX   1000000
-itermaxY   1000000
-
+mesh_itermaxX   1000000
+mesh_itermaxY   1000000
 mesh_tolerance   0.00001
-dbeta   0.000001
+beta_stepsize   0.000001
 
 solver_itermax   100000
 solver_tolerance   0.001
