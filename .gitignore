@@ -4,4 +4,9 @@
 *.dat
 *.png
 *.svg
+*
+!*.cpp
+!*.py
+!*.sh
+!*.txt
 pyvenv/

@@ -187,7 +187,7 @@ void deactivateBodyNodes(const Body& b,Coefficient& c){
     }
 }
 */
-double matVecProduct(const Coefficient& c,const vector<vector<double>>& phi, int i, int j){
+double rowProduct(const Coefficient& c,const vector<vector<double>>& phi, int i, int j){
     return c.aS[i][j]*phi[i][j-1] + c.aW[i][j]*phi[i-1][j] + c.aP[i][j]*phi[i][j] + c.aE[i][j]*phi[i+1][j] + c.aN[i][j]*phi[i][j+1];
 }
 
@@ -204,7 +204,7 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& m, 
 
                 //if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
 
-                double Aphi_P = matVecProduct(c,f.phi,i,j);
+                double Aphi_P = rowProduct(c,f.phi,i,j);
                 f.phi[i][j] += b.mask[i][j]*s.W*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
             }
         }

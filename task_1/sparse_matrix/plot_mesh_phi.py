@@ -39,15 +39,15 @@ psi = data_psi[:,2].reshape(Ny2, Nx2)
 plt.figure(figsize=(20,15))
 
 # ---- Mesh ----
-for xi in x_unique:
-    plt.plot([xi, xi],[y_unique[0], y_unique[-1]],'k',linewidth=0.3,alpha=0.5)
+# for xi in x_unique:
+#     plt.plot([xi, xi],[y_unique[0], y_unique[-1]],'k',linewidth=0.3,alpha=0.5)
 
-for yj in y_unique:
-    plt.plot([x_unique[0], x_unique[-1]],[yj, yj],'k',linewidth=0.3,alpha=0.5)
+# for yj in y_unique:
+#     plt.plot([x_unique[0], x_unique[-1]],[yj, yj],'k',linewidth=0.3,alpha=0.5)
 
 # ---- Iso-phi lines ----
 phi_contours = plt.contour(x,y,phi,levels=100,colors="red",linewidths=0.7)
-psi_contours = plt.contour(x,y,psi,levels=60,colors="blue",linewidths=0.7)
+#psi_contours = plt.contour(x,y,psi,levels=60,colors="blue",linewidths=0.7)
 
 
 #plt.clabel(phi_contours,inline=True,fontsize=7)
