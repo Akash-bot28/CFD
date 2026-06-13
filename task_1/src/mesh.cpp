@@ -50,44 +50,58 @@ void readInput(Mesh& m){
     ifstream input("input.txt");
     while(input >> label)
     {
-        if(label == "L1") input >> m.x.L1;
-        else if(label == "L2") input >> m.x.L2;
-        else if(label == "XC") input >> m.x.center;
+        //if(label == "L1") input >> m.x.L1;
+        //else if(label == "L2") input >> m.x.L2;
+        if(label == "XL") input >> m.x.domainMin;
+        else if(label == "XR") input >> m.x.domainMax;
+        //else if(label == "XC") input >> m.x.center;
+        else if(label == "XLs") input >> m.x.sMin;
+        else if(label == "XRs") input >> m.x.sMax;
         else if(label == "Nx1") input >> m.x.N1;
         else if(label == "Nxs") input >> m.x.Ns;
         else if(label == "Nx2") input >> m.x.N2;
         else if(label == "betax1") input >> m.x.beta1;
         else if(label == "betaxs") input >> m.x.betas;
         else if(label == "betax2") input >> m.x.beta2;
-        else if(label == "itermaxX") input >> m.x.itermax;
+        else if(label == "mesh_itermaxX") input >> m.x.itermax;
 
-        else if(label == "h1") input >> m.y.L1;
-        else if(label == "h2") input >> m.y.L2;
-        else if(label == "YC") input >> m.y.center;
+        //else if(label == "h1") input >> m.y.L1;
+        //else if(label == "h2") input >> m.y.L2;
+        else if(label == "YB") input >> m.y.domainMin;
+        else if(label == "YT") input >> m.y.domainMax;
+        //else if(label == "YC") input >> m.y.center;
+        else if(label == "YBs") input >> m.y.sMin;
+        else if(label == "YTs") input >> m.y.sMax;
         else if(label == "Ny1") input >> m.y.N1;
         else if(label == "Nys") input >> m.y.Ns;
         else if(label == "Ny2") input >> m.y.N2;
         else if(label == "betay1") input >> m.y.beta1;
         else if(label == "betays") input >> m.y.betas;
         else if(label == "betay2") input >> m.y.beta2;
-        else if(label == "itermaxY") input >> m.y.itermax;
+        else if(label == "mesh_itermaxY") input >> m.y.itermax;
 
-        else if(label == "a"){ input >> m.x.size; m.y.size=m.x.size;}
+        //else if(label == "a"){ input >> m.x.size; m.y.size=m.x.size;}
         else if(label == "alpha1") {input >> m.x.alpha1; m.y.alpha1=m.x.alpha1;}
         else if(label == "alpha2") {input >> m.x.alpha2; m.y.alpha2=m.x.alpha2;}
     
-        else if(label == "tolerance") {input >> m.x.tolerance;m.y.tolerance = m.x.tolerance;}
-        else if(label == "dbeta"){input >> m.x.dbeta;m.y.dbeta = m.x.dbeta;}
+        else if(label == "mesh_tolerance") {input >> m.x.tolerance;m.y.tolerance = m.x.tolerance;}
+        else if(label == "beta_stepsize"){input >> m.x.dbeta;m.y.dbeta = m.x.dbeta;}
     }
     input.close();
 }
 
 void buildGeometry(Axis& a){
-    a.sMin=a.center-a.size/2.0;
-    a.sMax=a.center+a.size/2.0;
+    //a.sMin=a.center-a.size/2.0;
+    //a.sMax=a.center+a.size/2.0;
 
-    a.domainMin=a.sMin-a.L1;
-    a.domainMax=a.sMax+a.L2;
+    //a.domainMin=a.sMin-a.L1;
+    //a.domainMax=a.sMax+a.L2;
+
+    a.size = a.sMax-a.sMin;
+
+    a.L1=a.sMin-a.domainMin;
+    a.L2=a.domainMax-a.sMax;
+
 }
 
 double stretchLeft(double zi, double L, double alpha, double beta){
@@ -201,7 +215,7 @@ void exportMesh(const Mesh& m, string filename){
     ofstream file(filename);
 
     file<< fixed << setprecision(8);
-
+    file<<m.x.N<<" "<<m.y.N<<endl;
     for(int j=0; j<m.y.N; j++)
     {
         for(int i=0; i<m.x.N; i++){
@@ -224,20 +238,34 @@ void exportGridSpacing(const Mesh& m,string xfilename, string yfilename){
     
 }
 
-void exportOptimization(const Axis& a){
-    ofstream file(a.name + "_optimization_10.dat");
-
-    for(size_t i=0; i<a.beta1_hist.size(); i++)
+void exportOptimization(const Mesh& m,string xfilename, string yfilename){
+    ofstream xfile(xfilename);
+    ofstream yfile(yfilename);
+    
+    for(size_t i=0; i<m.x.beta1_hist.size(); i++)
     {
-        file
+        xfile
         << i << " "
-        << a.beta1_hist[i] << " "
-        << a.beta2_hist[i] << " "
-        << a.betas_hist[i] << " "
-        << a.error1_hist[i] << " "
-        << a.error2_hist[i] 
-        << endl;
+        << m.x.beta1_hist[i] << " "
+        << m.x.beta2_hist[i] << " "
+        << m.x.betas_hist[i] << " "
+        << m.x.error1_hist[i] << " "
+        << m.x.error2_hist[i] << endl;
     }
+
+    for(size_t i=0; i<m.y.beta1_hist.size(); i++)
+    {
+        yfile
+        << i << " "
+        << m.y.beta1_hist[i] << " "
+        << m.y.beta2_hist[i] << " "
+        << m.y.betas_hist[i] << " "
+        << m.y.error1_hist[i] << " "
+        << m.y.error2_hist[i] << endl;
+    }
+
+    xfile.close();
+    yfile.close();
 }
 
 int main(){
@@ -250,18 +278,14 @@ int main(){
     buildGeometry(mesh.y);
 
     betaOptimize(mesh.x);
-    exportOptimization(mesh.x);
-
     betaOptimize(mesh.y);
-    exportOptimization(mesh.y);
-
+    
     generateAxis(mesh.x);
     generateAxis(mesh.y);
     
-
-    exportMesh(mesh,"mesh_10.dat");
-    exportGridSpacing(mesh,"dx_10.dat","dy_10.dat");
-    
+    exportMesh(mesh,"mesh.dat");
+    exportGridSpacing(mesh,"mesh_dx.dat","mesh_dy.dat");
+    exportOptimization(mesh,"x_beta_optimization.dat","y_beta_optimization.dat");
 
     return 0;
 }

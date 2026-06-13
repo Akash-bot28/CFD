@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-print(f"Plotting mesh")
+print("Plotting mesh")
 
-data=np.loadtxt(f"mesh.dat")
+data=np.loadtxt("mesh.dat", skiprows=1)
 
 x=data[:,0]
 y=data[:,1]

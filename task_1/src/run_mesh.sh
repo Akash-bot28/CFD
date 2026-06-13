@@ -1,12 +1,10 @@
 #!/bin/bash
 
-id=$1
+g++ mesh.cpp -o mesh.o
 
-#icpx mesh_${id}.cpp -o mesh_${id}.o
+./mesh.o
 
-./mesh_${id}.o
-
-python3 plot_beta.py $id
-python3 plot_d.py $id
-python3 plot_mesh.py $id
+python3 plot_beta.py
+python3 plot_mesh_spacing.py
+python3 plot_mesh.py
 

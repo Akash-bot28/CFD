@@ -1,12 +1,10 @@
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-mesh_id = sys.argv[1]
-print(f"Beta optimizing for mesh {mesh_id} ...")
+print(f"Beta optimizing for mesh...")
 
-xdata = np.loadtxt(f"X_optimization_{mesh_id}.dat")
-ydata = np.loadtxt(f"Y_optimization_{mesh_id}.dat")
+xdata = np.loadtxt("x_beta_optimization.dat")
+ydata = np.loadtxt("y_beta_optimization.dat")
 
 iter_x   = xdata[:,0]
 beta1_x  = xdata[:,1]
@@ -52,6 +50,6 @@ ax[1].legend()
 
 
 plt.tight_layout()
-plt.savefig("beta_optimization_{mesh_id}.png", dpi=1000, bbox_inches='tight')
+plt.savefig("mesh_beta_optimization.png", dpi=1000, bbox_inches='tight')
 
 plt.show()

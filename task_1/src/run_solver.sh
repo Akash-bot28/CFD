@@ -8,4 +8,4 @@
 ./sparse_phi.o
 ./sparse_psi.o
 
-python3 plot_mesh_phi.py
+python3 plot_solver_convergence.py

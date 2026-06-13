@@ -39,6 +39,7 @@ struct SolverParameter{
     double W;
     vector<double> error;
 };
+
 void readInput(Domain& d,Body& b,MeshParameter& p, Mesh& m, SolverParameter& s){
     ifstream file("mesh.dat");
     // Read mesh size

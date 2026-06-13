@@ -1,12 +1,10 @@
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-mesh_id = sys.argv[1]
-print(f"Plotting grid spacing for mesh {mesh_id} ...")
+print(f"Plotting grid spacing for mesh...")
 
-data_dx = np.loadtxt(f"dx_{mesh_id}.dat")
-data_dy = np.loadtxt(f"dy_{mesh_id}.dat")
+data_dx = np.loadtxt("mesh_dx.dat")
+data_dy = np.loadtxt("mesh_dy.dat")
 
 x  = data_dx[:,0]
 dx = data_dx[:,1]
@@ -41,6 +39,6 @@ axes[1].grid(True)
 
 plt.tight_layout()
 
-plt.savefig(f"spacing_{mesh_id}.png",dpi=500,bbox_inches='tight')
+plt.savefig("mesh_spacing.png",dpi=500,bbox_inches='tight')
 
 plt.show()

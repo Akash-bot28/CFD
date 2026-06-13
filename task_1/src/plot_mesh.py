@@ -1,11 +1,10 @@
-import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-mesh_id = sys.argv[1]
-print(f"Plotting mesh {mesh_id}")
 
-data=np.loadtxt(f"mesh_{mesh_id}.dat")
+print("Plotting mesh")
+
+data=np.loadtxt("mesh.dat", skiprows=1)
 
 x=data[:,0]
 y=data[:,1]
@@ -47,6 +46,6 @@ plt.xlabel('x')
 plt.ylabel('y')
 plt.grid(False)
 
-plt.savefig(f"mesh_{mesh_id}.png", dpi=1000, bbox_inches='tight')
+plt.savefig("mesh.png", dpi=1000, bbox_inches='tight')
 
 plt.show()
