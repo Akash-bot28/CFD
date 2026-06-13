@@ -141,13 +141,24 @@ void buildMask(Body& b,const MeshParameter& p){
 }
 void CoefficientBCBody(const Body& b,const MeshParameter& p,Coefficient& c,Field& f){
     // Left
-    for(int j=b.jB ;j<=b.jT ;j++) {int i=(b.iL-1); c.aP[i][j] = c.aP[i][j] + c.aE[i][j]; c.aE[i][j] = 0.0;}
+    for(int j=b.jB-1 ;j<=b.jT+1 ;j++) {int i=(b.iL-1); c.aP[i][j] = c.aP[i][j] + c.aE[i][j]; c.aE[i][j] = 0.0;}
     // Right
-    for(int j=b.jB ;j<=b.jT ;j++) {int i=(b.iR+1); c.aP[i][j] = c.aP[i][j] + c.aW[i][j]; c.aW[i][j] = 0.0;}
+    for(int j=b.jB-1 ;j<=b.jT+1 ;j++) {int i=(b.iR+1); c.aP[i][j] = c.aP[i][j] + c.aW[i][j]; c.aW[i][j] = 0.0;}
     // Bottom
-    for(int i=b.iL ;i<=b.iR ;i++) {int j=(b.jB-1); c.aP[i][j] = c.aP[i][j] + c.aN[i][j]; c.aN[i][j] = 0.0;}
+    for(int i=b.iL-1 ;i<=b.iR+1 ;i++) {int j=(b.jB-1); c.aP[i][j] = c.aP[i][j] + c.aN[i][j]; c.aN[i][j] = 0.0;}
     //Top
-    for(int i=b.iL ;i<=b.iR ;i++) {int j=(b.jT+1); c.aP[i][j] = c.aP[i][j] + c.aS[i][j]; c.aS[i][j] = 0.0;}
+    for(int i=b.iL-1 ;i<=b.iR+1 ;i++) {int j=(b.jT+1); c.aP[i][j] = c.aP[i][j] + c.aS[i][j]; c.aS[i][j] = 0.0;}
+
+    for(int j = b.jB; j <= b.jT; j++) {
+        for(int i = b.iL; i <= b.iR; i++) {
+            c.aS[i][j] = 0.0;
+            c.aW[i][j] = 0.0;
+            c.aE[i][j] = 0.0;
+            c.aN[i][j] = 0.0;
+            c.aP[i][j] = 1.0;   // identity row: phi = 0
+            c.bP[i][j] = 0.0;
+        }
+    }
 }
 
 void Jacobi(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficient& c,Field& f){
@@ -162,6 +173,7 @@ void Jacobi(SolverParameter& s,const Body& b,const MeshParameter& p,const Coeffi
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
                 phiNew[i][j] = b.mask[i][j]*(c.bP[i][j]- c.aS[i][j]*f.phi[i][j-1]- c.aW[i][j]*f.phi[i-1][j]- c.aE[i][j]*f.phi[i+1][j]- c.aN[i][j]*f.phi[i][j+1])/c.aP[i][j];
+                //phiNew[i][j] = (c.bP[i][j]- c.aS[i][j]*f.phi[i][j-1]- c.aW[i][j]*f.phi[i-1][j]- c.aE[i][j]*f.phi[i+1][j]- c.aN[i][j]*f.phi[i][j+1])/c.aP[i][j];
             }
         }
         // Copy new solution
@@ -177,18 +189,19 @@ void Jacobi(SolverParameter& s,const Body& b,const MeshParameter& p,const Coeffi
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
                 double residual = c.bP[i][j]- c.aS[i][j]*f.phi[i][j-1]- c.aW[i][j]*f.phi[i-1][j]- c.aP[i][j]*f.phi[i][j]- c.aE[i][j]*f.phi[i+1][j]- c.aN[i][j]*f.phi[i][j+1];
-
                 sumofsquares += b.mask[i][j]*residual*residual;
+                //sumofsquares += residual*residual;
                 fluid_nodes += b.mask[i][j];
+                //fluid_nodes++;
             }
         }
 
-        rms = sqrt(sumofsquares/Ninterior);
+        rms = sqrt(sumofsquares/fluid_nodes);
         s.error.push_back(rms);
 
         if(rms <= s.tolerance) break;
 
-        if(n%10==0) cout<<"iter="<<n<<"  rms="<<rms<<endl;
+        if(n%100==0) cout<<"iter="<<n<<"  rms="<<rms<<endl;
 
     }
 
@@ -216,6 +229,7 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficie
 
                 double Aphi_P = rowProduct(c,f.phi,i,j);
                 f.phi[i][j] += b.mask[i][j]*s.W*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
+                //f.phi[i][j] += s.W*(c.bP[i][j]- Aphi_P)/c.aP[i][j];
             }
         }
 
@@ -230,7 +244,9 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficie
                 double Aphi_P = rowProduct(c,f.phi,i,j);
                 double residual = c.bP[i][j]- Aphi_P;
                 sumofsquares += b.mask[i][j]*residual*residual; 
+                //sumofsquares += residual*residual; 
                 fluid_nodes += b.mask[i][j];
+                //fluid_nodes++;
             }
         }
         rms = sqrt(sumofsquares/fluid_nodes);
@@ -286,6 +302,6 @@ int main(){
     SOR(s,b,p,c,f);
 
     exportSolverData(s,p,m,c,f,"phi_SOR_converge.dat");
-    exportPhi(p,m,f,"phi_solved.dat");
+    exportPhi(p,m,f,"phi_SOR_solved.dat");
     return 0;
 }

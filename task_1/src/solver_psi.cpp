@@ -145,16 +145,27 @@ void CoefficientBCBody(const Body& b,const MeshParameter& p,Coefficient& c,Field
     double U=100.0;
     double psi_body=U*(b.YTs+b.YBs)/2.0;
     // Left
-    for(int j=b.jB ;j<=b.jT ;j++) {int i=(b.iL-1) ; c.bP[i][j] = c.bP[i][j] - c.aE[i][j]*psi_body; c.aE[i][j] = 0.0;}
+    for(int j=b.jB-1 ;j<=b.jT+1;j++) {int i=(b.iL-1) ; c.bP[i][j] = c.bP[i][j] - c.aE[i][j]*psi_body; c.aE[i][j] = 0.0;}
     // Right
-    for(int j=b.jB ;j<=b.jT ;j++) {int i=(b.iR+1) ; c.bP[i][j] = c.bP[i][j] - c.aW[i][j]*psi_body; c.aW[i][j] = 0.0;}
+    for(int j=b.jB -1;j<=b.jT+1;j++) {int i=(b.iR+1) ; c.bP[i][j] = c.bP[i][j] - c.aW[i][j]*psi_body; c.aW[i][j] = 0.0;}
     // Bottom wall
-    for(int i=b.iL ;i<=b.iR ;i++) {int j=(b.jB-1) ; c.bP[i][j] = c.bP[i][j] - c.aN[i][j]*psi_body; c.aN[i][j] = 0.0;}
+    for(int i=b.iL-1 ;i<=b.iR+1 ;i++) {int j=(b.jB-1) ; c.bP[i][j] = c.bP[i][j] - c.aN[i][j]*psi_body; c.aN[i][j] = 0.0;}
     //Top wall
-    for(int i=b.iL ;i<=b.iR ;i++) {int j=(b.jT+1) ; c.bP[i][j] = c.bP[i][j] - c.aS[i][j]*psi_body; c.aS[i][j] = 0.0;}
+    for(int i=b.iL-1 ;i<=b.iR+1 ;i++) {int j=(b.jT+1) ; c.bP[i][j] = c.bP[i][j] - c.aS[i][j]*psi_body; c.aS[i][j] = 0.0;}
+
+    for(int j = b.jB; j <= b.jT; j++) {
+        for(int i = b.iL; i <= b.iR; i++) {
+            c.aS[i][j] = 0.0;
+            c.aW[i][j] = 0.0;
+            c.aE[i][j] = 0.0;
+            c.aN[i][j] = 0.0;
+            c.aP[i][j] = 1.0;   // identity row: phi = 0
+            c.bP[i][j] = 0.0;
+        }
+    }
 }
 
-void Jacobi(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& m,const Coefficient& c,Field& f){
+void Jacobi(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficient& c,Field& f){
     double rms;
     const int Ninterior =(p.Nx-2)*(p.Ny-2);
 
@@ -164,7 +175,8 @@ void Jacobi(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& 
     for(n=1; n<s.itermax; n++){
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
-                psiNew[i][j] = b.mask[i][j]*(c.bP[i][j]- c.aS[i][j]*f.psi[i][j-1]- c.aW[i][j]*f.psi[i-1][j]- c.aE[i][j]*f.psi[i+1][j]- c.aN[i][j]*f.psi[i][j+1])/c.aP[i][j];
+                //psiNew[i][j] = b.mask[i][j]*(c.bP[i][j]- c.aS[i][j]*f.psi[i][j-1]- c.aW[i][j]*f.psi[i-1][j]- c.aE[i][j]*f.psi[i+1][j]- c.aN[i][j]*f.psi[i][j+1])/c.aP[i][j];
+                psiNew[i][j] = (c.bP[i][j]- c.aS[i][j]*f.psi[i][j-1]- c.aW[i][j]*f.psi[i-1][j]- c.aE[i][j]*f.psi[i+1][j]- c.aN[i][j]*f.psi[i][j+1])/c.aP[i][j];
             }
         }
         // Copy new solution
@@ -180,17 +192,17 @@ void Jacobi(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& 
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
                 double residual = c.bP[i][j]- c.aS[i][j]*f.psi[i][j-1]- c.aW[i][j]*f.psi[i-1][j]- c.aP[i][j]*f.psi[i][j]- c.aE[i][j]*f.psi[i+1][j]- c.aN[i][j]*f.psi[i][j+1];
-
                 sumofsquares += b.mask[i][j]*residual*residual;
+                //sumofsquares += residual*residual;
                 fluid_nodes += b.mask[i][j];
             }
         }
 
-        rms = sqrt(sumofsquares/Ninterior);
+        rms = sqrt(sumofsquares/fluid_nodes);
         s.error.push_back(rms);
 
         if(rms <= s.tolerance) break;
-
+        if(n%100==0) cout<<"iter="<<n<<"  rms="<<rms<<endl;
     }
 
     cout << "\nPSI Jacobi Solver iterations = "<< n << endl;
@@ -215,7 +227,8 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficie
                 //if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
 
                 double Apsi_P = rowProduct(c,f.psi,i,j);
-                f.psi[i][j] += b.mask[i][j]*s.W*(c.bP[i][j]- Apsi_P)/c.aP[i][j];
+                //f.psi[i][j] += b.mask[i][j]*s.W*(c.bP[i][j]- Apsi_P)/c.aP[i][j];
+                f.psi[i][j] += s.W*(c.bP[i][j]- Apsi_P)/c.aP[i][j];
             }
         }
 
@@ -229,7 +242,8 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficie
 
                 double Apsi_P = rowProduct(c,f.psi,i,j);
                 double residual = c.bP[i][j]- Apsi_P;
-                sumofsquares += b.mask[i][j]*residual*residual; 
+                //sumofsquares += residual*residual; 
+                sumofsquares += b.mask[i][j]*residual*residual;
                 active_nodes += b.mask[i][j];
             }
         }
@@ -285,6 +299,6 @@ int main(){
     SOR(s,b,p,c,f);
 
     exportSolverData(s,p,m,c,f,"psi_SOR_converge.dat");
-    exportPsi(p,m,f,"psi_solved.dat");
+    exportPsi(p,m,f,"psi_SOR_solved.dat");
     return 0;
 }
