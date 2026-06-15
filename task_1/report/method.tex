@@ -1,0 +1,348 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\begin{document}
+\section{Iterative Methods for Solving Linear Systems}
+
+\subsection{List of Solvers}
+\begin{enumerate}
+    \item Conjugate Gradient (CG)
+    \item BiConjugate Gradient (BiCG)
+    \item BiCGSTAB
+    \item Stone's SIP (Standalone Solver)
+    \item Preconditioned CG (PCG)
+    \item Preconditioned BiCG
+    \item Preconditioned BiCGSTAB
+\end{enumerate}
+
+\subsection{Nomenclature and Variables}
+
+\begin{description}
+    \item[$A$] Coefficient matrix of the linear system.
+    \item[$Q$] Right-hand side source vector.
+    \item[$\phi^{(k)}$] Approximate solution vector at iteration $k$.
+    \item[$\rho^{(k)}$] Residual vector at iteration $k$.
+    \item[$p^{(k)}$] Search direction vector at iteration $k$.
+    \item[$z^{(k)}$] Auxiliary vector at iteration $k$.
+    \item[$\alpha^{(k)},\beta^{(k)},\xi^{(k)}$] Scalar coefficients.
+\end{description}
+%=========================================================
+\subsection{1. Conjugate Gradient (CG) --- Without Preconditioner}
+
+Applicable only to Symmetric Positive Definite (SPD) systems.
+
+\paragraph{Initialization}
+\begin{align*}
+k &= 0 \\
+\phi^{(0)} &= \phi_{\text{in}} \\
+\rho^{(0)} &= Q - A\phi_{\text{in}} \\
+p^{(0)} &= 0 \\
+s^{(0)} &= 10^{30}
+\end{align*}
+
+\paragraph{Iteration}
+Advance counter:
+\[k = k + 1\]
+
+Compute:
+\begin{align*}
+s^{(k)} &= \rho^{(k-1)} \cdot \rho^{(k-1)} \\
+\beta^{(k)} &= \frac{s^{(k)}}{s^{(k-1)}} \\
+p^{(k)} &= \rho^{(k-1)} + \beta^{(k)} p^{(k-1)} \\
+\alpha^{(k)} &= \frac{s^{(k)}}{p^{(k)} \cdot A p^{(k)}} \\
+\phi^{(k)} &= \phi^{(k-1)} + \alpha^{(k)} p^{(k)} \\
+\rho^{(k)} &= \rho^{(k-1)} - \alpha^{(k)} A p^{(k)}
+\end{align*}
+
+\paragraph{Convergence Check}
+Stop if
+\[\|\rho^{(k)}\| < \varepsilon.\]
+
+Else continue iterating.
+
+%=========================================================
+\subsection{2. BiConjugate Gradient (BiCG) --- Without Preconditioner}
+
+Applicable to nonsymmetric systems.
+
+\paragraph{Initialization}
+\begin{align*}
+k &= 0 \\
+\phi^{(0)} &= \phi_{\text{in}} \\
+\rho^{(0)} &= Q - A\phi_{\text{in}} \\
+\bar{\rho}^{(0)} &= Q - A^{T}\phi_{\text{in}} \\
+p^{(0)} &= 0 \\
+\bar{p}^{(0)} &= 0 \\
+s^{(0)} &= 10^{30}
+\end{align*}
+
+\paragraph{Iteration}
+Advance counter:
+\[k = k+1\]
+
+Compute:
+\begin{align*}
+s^{(k)} &= \rho^{(k-1)} \cdot \bar{\rho}^{(k-1)} \\
+\beta^{(k)} &= \frac{s^{(k)}}{s^{(k-1)}} \\
+p^{(k)} &= \rho^{(k-1)} + \beta^{(k)} p^{(k-1)} \\
+\bar{p}^{(k)} &= \bar{\rho}^{(k-1)} + \beta^{(k)} \bar{p}^{(k-1)} \\
+\alpha^{(k)} &= \frac{s^{(k)}}{\bar{p}_k \cdot A p^{(k)}} \\
+\phi^{(k)} &= \phi^{(k-1)} + \alpha^{(k)} p^{(k)} \\
+\rho^{(k)} &= \rho^{(k-1)} - \alpha^{(k)} A p^{(k)} \\
+\bar{\rho}^{(k)} &= \bar{\rho}^{(k-1)} - \alpha_k A^{T}\bar{p}^{(k)}
+\end{align*}
+
+\paragraph{Convergence Check}
+Stop if
+\[\|\rho_k\| < \varepsilon.\]
+
+%=========================================================
+\subsection{3. BiCGSTAB (GPBi-CG) --- Without Preconditioner}
+
+\paragraph{Initialization}
+\begin{align*}
+k &= 0 \\
+\phi_0 &= \phi_{\text{in}} \\
+\rho_0 &= Q - A\phi_{\text{in}} \\
+\bar{\rho}_0 &= \rho_0 \\
+p_0 &= 0 \\
+\alpha_0 &= 10^{30} \\
+\xi_0 &= 10^{30} \\
+\beta_1 &= 0
+\end{align*}
+
+\paragraph{Iteration}
+Advance counter:
+\[
+k = k+1
+\]
+
+Compute:
+\begin{align*}
+p_k &= \rho_{k-1}
++\beta_k
+\left(
+p_{k-1}
+-\xi_{k-1}A p_{k-1}
+\right)
+\\
+\alpha_k &= \frac{\rho_{k-1} \cdot \bar{\rho}_0}{(A p^{(k)}) \cdot \bar{\rho}_0}
+\\
+z_k &= \rho_{k-1} - \alpha_k A p_k
+\\
+\xi_k &=
+\frac{(A z_k)^{T}z_k}
+     {(A z_k)^{T}(A z_k)}
+\\
+\phi_k &=
+\phi_{k-1}
++\alpha_k p_k
++\xi_k z_k
+\\
+\rho_k &=
+z_k-\xi_k A z_k
+\\
+\beta_{k+1}
+&=
+\frac{\xi_k}{\alpha_k}
+\frac{\rho_k^{T}\hat{\rho}_0}
+     {\rho_{k-1}^{T}\hat{\rho}_0}
+\end{align*}
+
+\paragraph{Convergence Check}
+Stop if
+\[
+\|\rho_k\| < \varepsilon.
+\]
+
+%=========================================================
+\subsection{4. Stone's SIP}
+
+\subsubsection{Nomenclature}
+
+\paragraph{Grid and Indices}
+
+\begin{align*}
+i,j &:\ \text{Grid coordinates} \\
+N_j &:\ \text{Number of grid points in }j\text{-direction} \\
+l &= (i-1)N_j + j
+\end{align*}
+
+Neighbor indexing:
+
+\begin{align*}
+\text{North} &\rightarrow l+1 \\
+\text{South} &\rightarrow l-1 \\
+\text{East} &\rightarrow l+N_j \\
+\text{West} &\rightarrow l-N_j
+\end{align*}
+
+\paragraph{Coefficient Matrix}
+
+For a five-point stencil:
+
+\begin{align*}
+A_P,\;A_E,\;A_W,\;A_N,\;A_S
+\end{align*}
+
+represent the central, east, west, north and south coefficients.
+
+\paragraph{ILU Matrices}
+
+Lower triangular matrix:
+\[
+L_W,\;L_S,\;L_P
+\]
+
+Upper triangular matrix:
+\[
+U_E,\;U_N
+\]
+
+with unit diagonal.
+
+\paragraph{Stone Parameter}
+
+\[
+0 < \alpha \le 1
+\]
+
+where $\alpha=0$ gives ILU(0).
+
+\subsubsection{Initialization}
+
+\begin{align*}
+n &= 0 \\
+\phi^{(0)} &= \phi_{\text{in}}
+\end{align*}
+
+Compute SIP coefficients:
+
+\begin{align*}
+L_W^l
+&=
+\frac{A_W^l}
+     {1+\alpha U_N^{l-N_j}}
+\\
+L_S^l
+&=
+\frac{A_S^l}
+     {1+\alpha U_E^{l-1}}
+\\
+L_P^l
+&=
+A_P^l
++\alpha
+\left(
+L_W^l U_N^{l-N_j}
++
+L_S^l U_E^{l-1}
+\right)
+\\
+&\qquad
+-
+L_W^l U_E^{l-N_j}
+-
+L_S^l U_N^{l-1}
+\\
+U_N^l
+&=
+\frac{
+A_N^l
+-\alpha L_W^l U_N^{l-N_j}
+}
+{L_P^l}
+\\
+U_E^l
+&=
+\frac{
+A_E^l
+-\alpha L_S^l U_E^{l-1}
+}
+{L_P^l}
+\end{align*}
+
+\subsubsection{Iteration}
+
+Advance:
+\[
+n=n+1
+\]
+
+\paragraph{Residual}
+\begin{align*}
+\rho_l
+=
+Q_l
+&-A_P^l\phi_l
+-A_N^l\phi_{l+1}
+-A_S^l\phi_{l-1}
+\\
+&-A_E^l\phi_{l+N_j}
+-A_W^l\phi_{l-N_j}
+\end{align*}
+
+\paragraph{Forward Substitution}
+Solve:
+\[
+LR=\rho
+\]
+
+\[
+R_l
+=
+\frac{
+\rho_l
+-L_S^lR_{l-1}
+-L_W^lR_{l-N_j}
+}
+{L_P^l}
+\]
+
+\paragraph{Backward Substitution}
+Solve:
+\[
+U\delta=R
+\]
+
+\[
+\delta_l
+=
+R_l
+-U_N^l\delta_{l+1}
+-U_E^l\delta_{l+N_j}
+\]
+
+\paragraph{Update}
+\[
+\phi_l^{\text{new}}
+=
+\phi_l+\delta_l
+\]
+
+\paragraph{Convergence Check}
+
+Compute residual norm:
+
+\[
+\sum_l |\rho_l|
+\]
+
+Stop if
+
+\[
+\|\rho\| < \varepsilon.
+\]
+
+Otherwise set
+
+\[
+\phi \leftarrow \phi^{\text{new}}
+\]
+
+\end{document}

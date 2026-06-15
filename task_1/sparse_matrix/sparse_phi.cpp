@@ -217,7 +217,7 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& m, 
 
                 //if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
 
-                double Aphi_P = matVecProduct(c,f.phi,i,j);
+                double Aphi_P = rowProduct(c,f.phi,i,j);
                 double residual = c.bP[i][j]- Aphi_P;
                 sumofsquares += b.mask[i][j]*residual*residual; 
                 active_nodes += b.mask[i][j];
@@ -227,6 +227,7 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Mesh& m, 
         s.error.push_back(rms);
 
         if(rms <= s.tolerance) break;
+        if(n%10==0) cout<<"iter="<<n<<"   rms="<<rms<<endl;
     }
     cout << "\nPHI SOR iterations = "<< n << endl;
     if(n == s.itermax) cout << "Stopped due to itermax." << endl;
@@ -309,7 +310,7 @@ int main(){
     //Jacobi(s,p,m,c,f);
     SOR(s,b,p,m,c,f);
     
-    //exportSolverData(s,p,m,c,f,"phi_error_converge.dat");
+    exportSolverData(s,p,m,c,f,"phi_error_converge.dat");
  
     exportPhi(p,m,f,"phi_solved.dat");
 

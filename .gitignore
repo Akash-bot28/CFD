@@ -4,4 +4,8 @@
 *.dat
 *.png
 *.svg
-
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+pyvenv/

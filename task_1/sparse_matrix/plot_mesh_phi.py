@@ -26,12 +26,12 @@ y   = data_phi[:,1].reshape(Ny, Nx)
 phi = data_phi[:,2].reshape(Ny, Nx)
 
 #Read psi field
-with open("psi_solved.dat") as f:
-    Nx2, Ny2 = map(int, f.readline().split())
+# with open("psi_solved.dat") as f:
+#     Nx2, Ny2 = map(int, f.readline().split())
 
-data_psi = np.loadtxt("psi_solved.dat", skiprows=1)
+# data_psi = np.loadtxt("psi_solved.dat", skiprows=1)
 
-psi = data_psi[:,2].reshape(Ny2, Nx2)
+# psi = data_psi[:,2].reshape(Ny2, Nx2)
 
 
 # Plot

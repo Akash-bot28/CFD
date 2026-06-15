@@ -146,9 +146,9 @@ void BC(const MeshParameter& p,const Mesh& m,Coefficient& c,Field& f){
 
     for(int l=(1+p.Nx);l<=(1+(p.Ny-2)*p.Nx);l+=p.Nx)               {c.bP[l]=c.bP[l]-c.aW[l]*f.phi[l-1]; c.aW[l]=0;}    //inlet dirichlet
 
-    for(int l=((p.Nx-2)+p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l+=p.Nx) {c.aP[l]=c.aP[l]+c.aE[l]; c.aE[l]=0;}              //outlet convective bc
+    //for(int l=((p.Nx-2)+p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l+=p.Nx) {c.aP[l]=c.aP[l]+c.aE[l]; c.aE[l]=0;}              //outlet convective bc
 
-    //for(int l=((p.Nx-2)+p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l+=p.Nx) {c.bP[l]=c.bP[l]-c.aE[l]*f.phi[l+1]; c.aE[l]=0;} //outlet dirichlet
+    for(int l=((p.Nx-2)+p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l+=p.Nx) {c.bP[l]=c.bP[l]-c.aE[l]*f.phi[l+1]; c.aE[l]=0;} //outlet dirichlet
 
     for(int l=(1+p.Nx);l<=((p.Nx-2)+p.Nx);l++)                     {c.bP[l]=c.bP[l]-c.aS[l]*f.phi[l-p.Nx]; c.aS[l]=0;} //bottom dirichlet
     for(int l=(1+(p.Ny-2)*p.Nx);l<=((p.Nx-2)+(p.Ny-2)*p.Nx);l++)   {c.bP[l]=c.bP[l]-c.aN[l]*f.phi[l+p.Nx]; c.aN[l]=0;} //top  dirichlett

@@ -258,6 +258,143 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficie
     else cout << "Converged."<< endl;
 }
 
+
+vector<vector<double>> matVecProduct(const MeshParameter& p, const Coefficient& c, const vector<vector<double>>& x) {
+    vector<vector<double>> Ax(p.Nx, vector<double>(p.Ny, 0.0));
+    for (int j = 1; j < p.Ny - 1; j++) {
+        for (int i = 1; i < p.Nx - 1; i++) {
+            Ax[i][j] = c.aS[i][j] * x[i][j - 1] + 
+                      c.aW[i][j] * x[i - 1][j] + 
+                      c.aP[i][j] * x[i][j]     + 
+                      c.aE[i][j] * x[i + 1][j] + 
+                      c.aN[i][j] * x[i][j + 1];
+        }
+    }
+    return Ax;
+}
+double dotProduct(const MeshParameter& p, const vector<vector<double>>& x, const vector<vector<double>>& y) {
+    double sum = 0.0;
+    for (int j = 1; j < p.Ny - 1; j++) {
+        for (int i = 1; i < p.Nx - 1; i++) {
+            sum += x[i][j] * y[i][j];
+        }
+    }
+    return sum;
+}
+double rmsNorm(const Body& b, const MeshParameter& p, const vector<vector<double>>& r) {
+    double sum = 0.0;
+    double fluid_nodes = 0.0;
+    for (int j = 1; j < p.Ny - 1; j++) {
+        for (int i = 1; i < p.Nx - 1; i++) {
+            sum += b.mask[i][j] * r[i][j] * r[i][j];
+            fluid_nodes += b.mask[i][j];
+        }
+    }
+    if (fluid_nodes == 0.0) return 0.0;
+    return sqrt(sum / fluid_nodes);
+}
+
+void BiCGSTAB(SolverParameter& s, const Body& b, const MeshParameter& p, const Mesh& m, const Coefficient& c, Field& f) {
+    cout << "\nSolving Psi using BiCGSTAB..." << endl;
+    s.error.clear();
+
+    // Initialization
+    // Compute initial residual: r0 = bP - A*psi
+    vector<vector<double>> Ax = matVecProduct(p, c, f.psi);
+    vector<vector<double>> r0(p.Nx, vector<double>(p.Ny, 0.0));
+    for (int j = 1; j < p.Ny - 1; j++) {
+        for (int i = 1; i < p.Nx - 1; i++) {
+            r[i][j] = c.bP[i][j] - Ax[i][j];
+        }
+    }
+
+    // Shadow residual vector r_star (initialized to r0)
+    vector<vector<double>> r_star = r;
+    vector<vector<double>> p_vec = r;
+
+    double rms = rmsNorm(b, p, r);
+    s.error.push_back(rms);
+
+    // Allocate memory for temporary array fields
+    vector<vector<double>> v(p.Nx, vector<double>(p.Ny, 0.0));
+    vector<vector<double>> s_vec(p.Nx, vector<double>(p.Ny, 0.0));
+    vector<vector<double>> t(p.Nx, vector<double>(p.Ny, 0.0));
+
+    double rho_prev = 1.0;
+    double alpha = 1.0;
+    double omega = 1.0;
+
+    int n;
+    for(n=1; n<s.itermax; n++){
+        double rho = dotProduct(p, r_star, r);
+        //modifie search trajectory p_vec after first step
+        if (n > 1) {
+            double beta = (rho / rho_prev) * (alpha / omega);
+            for (int j = 1; j < p.Ny - 1; j++) {
+                for (int i = 1; i < p.Nx - 1; i++) {
+                    p_vec[i][j] = r[i][j] + beta * (p_vec[i][j] - omega * v[i][j]);
+                }
+            }
+        }
+
+        // 1. Compute v = A*p
+        v = matVecProduct(p, c, p_vec);
+
+        // 2. Compute alpha
+        alpha = rho / dotProduct(p, r_star, v);
+
+        // 3. temporary residual s = r - alpha * v
+        for (int j = 1; j < p.Ny - 1; j++) {
+            for (int i = 1; i < p.Nx - 1; i++) {
+                s_vec[i][j] = r[i][j] - alpha * v[i][j];
+            }
+        }
+
+        //Check Intermediate Residual s
+        double s_norm = rmsNorm(b, p, s_vec);
+        if (s_norm <= s.tolerance) {
+            for (int j = 1; j < p.Ny - 1; j++) {
+                for (int i = 1; i < p.Nx - 1; i++) {
+                    f.psi[i][j] += alpha * p_vec[i][j];
+                }
+            }
+            rms = s_norm;
+            s.error.push_back(rms);
+            break;
+        }
+
+        // if not converged yet the need to stabalize
+        // 4. Compute t = A*s
+        t = matVecProduct(p, c, s_vec);
+
+        // 5. Compute omega = (t, s) / (t, t)
+        omega = dotProduct(p, t, s_vec) / dotProduct(p, t, t);
+
+        // Update solution: psi = psi + alpha * p + omega * s
+        // Update residual: r = s - omega * t
+        for (int j = 1; j < p.Ny - 1; j++) {
+            for (int i = 1; i < p.Nx - 1; i++) {
+                f.psi[i][j] += alpha * p_vec[i][j] + omega * s_vec[i][j];
+                r[i][j] = s_vec[i][j] - omega * t[i][j];
+            }
+        }
+
+        rms = rmsNorm(b, p, r);
+        s.error.push_back(rms);
+
+        if (n % 10 == 0) { cout << "iter=" << n << "  rms=" << rms << endl;}
+
+        if (rms <= s.tolerance) break;
+
+        rho_prev = rho;
+    }
+
+    cout << "\nPSI BiCGSTAB Solver iterations = " << n << " | Final RMS = " << rms << endl;
+    if (n == s.itermax) cout << "Stopped due to itermax." << endl;
+    else cout << "Converged." << endl;
+
+}
+
 void exportPsi(const MeshParameter& p,const Mesh& m,const Field& f,string filename){
     ofstream file(filename);
     file << fixed << setprecision(8);
@@ -297,6 +434,7 @@ int main(){
 
     //Jacobi(s,b,p,c,f);
     SOR(s,b,p,c,f);
+    //BiCGSTAB(s,b,p,m,c,f);
 
     exportSolverData(s,p,m,c,f,"psi_SOR_converge.dat");
     exportPsi(p,m,f,"psi_SOR_solved.dat");

@@ -10,7 +10,7 @@ error=data[:,1]
 
 plt.figure(figsize=(20,10))
 
-plt.scatter(iter,error,s=5)
+plt.loglog(iter,error, linewidth =1.2)
 
 plt.axis('equal')
 plt.title("solver convergence")

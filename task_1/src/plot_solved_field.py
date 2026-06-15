@@ -16,10 +16,10 @@ x_unique = np.unique(x_mesh)
 y_unique = np.unique(y_mesh)
 
 # Read phi field
-with open("phi_SOR_solved.dat") as f:
+with open("phi_solved.dat") as f:
     Nx, Ny = map(int, f.readline().split())
 
-data_phi = np.loadtxt("phi_SOR_solved.dat", skiprows=1)
+data_phi = np.loadtxt("phi_solved.dat", skiprows=1)
 
 x   = data_phi[:,0].reshape(Ny, Nx)
 y   = data_phi[:,1].reshape(Ny, Nx)
@@ -46,9 +46,10 @@ plt.figure(figsize=(20,15))
 #     plt.plot([x_unique[0], x_unique[-1]],[yj, yj],'k',linewidth=0.3,alpha=0.5)
 
 # ---- Iso-phi lines ----
-phi_contours = plt.contour(x,y,phi,levels=100,colors="red",linewidths=0.7)
-#psi_contours = plt.contour(x,y,psi,levels=60,colors="blue",linewidths=0.7)
-
+plt.rcParams['contour.negative_linestyle'] = 'solid'
+#phi_contours = plt.contour(x,y,phi,levels=100,colors="red",linewidths=0.7)
+psi_contours = plt.contour(x,y,psi,levels=60,colors="blue",linewidths=0.7)
+plt.contour(x, y, psi,levels=[-0.001],colors='blue',linewidths=0.7)
 
 #plt.clabel(phi_contours,inline=True,fontsize=7)
 #plt.clabel(psi_contours,inline=True,fontsize=7)
