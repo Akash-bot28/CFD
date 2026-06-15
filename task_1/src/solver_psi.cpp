@@ -175,8 +175,8 @@ void Jacobi(SolverParameter& s,const Body& b,const MeshParameter& p,const Coeffi
     for(n=1; n<s.itermax; n++){
         for(int j=1; j<p.Ny-1; j++){
             for(int i=1; i<p.Nx-1; i++){
-                //psiNew[i][j] = b.mask[i][j]*(c.bP[i][j]- c.aS[i][j]*f.psi[i][j-1]- c.aW[i][j]*f.psi[i-1][j]- c.aE[i][j]*f.psi[i+1][j]- c.aN[i][j]*f.psi[i][j+1])/c.aP[i][j];
-                psiNew[i][j] = (c.bP[i][j]- c.aS[i][j]*f.psi[i][j-1]- c.aW[i][j]*f.psi[i-1][j]- c.aE[i][j]*f.psi[i+1][j]- c.aN[i][j]*f.psi[i][j+1])/c.aP[i][j];
+                psiNew[i][j] = b.mask[i][j]*(c.bP[i][j]- c.aS[i][j]*f.psi[i][j-1]- c.aW[i][j]*f.psi[i-1][j]- c.aE[i][j]*f.psi[i+1][j]- c.aN[i][j]*f.psi[i][j+1])/c.aP[i][j];
+                //psiNew[i][j] = (c.bP[i][j]- c.aS[i][j]*f.psi[i][j-1]- c.aW[i][j]*f.psi[i-1][j]- c.aE[i][j]*f.psi[i+1][j]- c.aN[i][j]*f.psi[i][j+1])/c.aP[i][j];
             }
         }
         // Copy new solution
@@ -227,8 +227,8 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficie
                 //if(i>=b.iL && i<=b.iR && j>=b.jB && j<=b.jT) continue;
 
                 double Apsi_P = rowProduct(c,f.psi,i,j);
-                //f.psi[i][j] += b.mask[i][j]*s.W*(c.bP[i][j]- Apsi_P)/c.aP[i][j];
-                f.psi[i][j] += s.W*(c.bP[i][j]- Apsi_P)/c.aP[i][j];
+                f.psi[i][j] += b.mask[i][j]*s.W*(c.bP[i][j]- Apsi_P)/c.aP[i][j];
+                //f.psi[i][j] += s.W*(c.bP[i][j]- Apsi_P)/c.aP[i][j];
             }
         }
 
@@ -253,30 +253,29 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficie
         if(rms <= s.tolerance) break;
         if(n%100==0) cout<<"iter="<<n<<"  rms="<<rms<<endl;
     }
-    cout << "\nPSI SOR iterations = "<< n << endl;
+    cout << "\nPSI iterations = "<< n << endl;
     if(n == s.itermax) cout << "Stopped due to itermax." << endl;
     else cout << "Converged."<< endl;
 }
 
 
-vector<vector<double>> matVecProduct(const MeshParameter& p, const Coefficient& c, const vector<vector<double>>& x) {
+vector<vector<double>> matVecProduct(const Body& b,const MeshParameter& p, const Coefficient& c, const vector<vector<double>>& x) {
     vector<vector<double>> Ax(p.Nx, vector<double>(p.Ny, 0.0));
     for (int j = 1; j < p.Ny - 1; j++) {
         for (int i = 1; i < p.Nx - 1; i++) {
-            Ax[i][j] = c.aS[i][j] * x[i][j - 1] + 
-                      c.aW[i][j] * x[i - 1][j] + 
-                      c.aP[i][j] * x[i][j]     + 
-                      c.aE[i][j] * x[i + 1][j] + 
-                      c.aN[i][j] * x[i][j + 1];
+            Ax[i][j] = c.aS[i][j]*x[i][j-1] + c.aW[i][j]*x[i-1][j] + c.aP[i][j]*x[i][j] + c.aE[i][j]*x[i+1][j] + c.aN[i][j]*x[i][j+1];
+            //Ax[i][j] = b.mask[i][j]*Ax[i][j];
+
         }
     }
     return Ax;
 }
-double dotProduct(const MeshParameter& p, const vector<vector<double>>& x, const vector<vector<double>>& y) {
+double dotProduct(const Body& b,const MeshParameter& p, const vector<vector<double>>& x, const vector<vector<double>>& y) {
     double sum = 0.0;
-    for (int j = 1; j < p.Ny - 1; j++) {
-        for (int i = 1; i < p.Nx - 1; i++) {
+    for (int j = 1; j < p.Ny-1; j++) {
+        for (int i = 1; i < p.Nx-1; i++) {
             sum += x[i][j] * y[i][j];
+            //sum += b.mask[i][j] * x[i][j] * y[i][j];
         }
     }
     return sum;
@@ -294,106 +293,113 @@ double rmsNorm(const Body& b, const MeshParameter& p, const vector<vector<double
     return sqrt(sum / fluid_nodes);
 }
 
-void BiCGSTAB(SolverParameter& s, const Body& b, const MeshParameter& p, const Mesh& m, const Coefficient& c, Field& f) {
-    cout << "\nSolving Psi using BiCGSTAB..." << endl;
+void BiCGSTAB(SolverParameter& s, const Body& b, const MeshParameter& p, const Mesh& m, const Coefficient& c, Field& f){
     s.error.clear();
-
-    // Initialization
-    // Compute initial residual: r0 = bP - A*psi
-    vector<vector<double>> Ax = matVecProduct(p, c, f.psi);
-    vector<vector<double>> r0(p.Nx, vector<double>(p.Ny, 0.0));
-    for (int j = 1; j < p.Ny - 1; j++) {
-        for (int i = 1; i < p.Nx - 1; i++) {
-            r[i][j] = c.bP[i][j] - Ax[i][j];
+    // r(0) = Q - A*psi(0)   initial residula
+    vector<vector<double>> Ax = matVecProduct(b,p,c,f.psi);
+    vector<vector<double>> r(p.Nx, vector<double>(p.Ny,0.0));
+    for (int j=1; j<p.Ny-1; j++){
+        for(int i=1; i<p.Nx-1; i++){
+            r[i][j] = c.bP[i][j]-Ax[i][j];
         }
     }
-
-    // Shadow residual vector r_star (initialized to r0)
-    vector<vector<double>> r_star = r;
-    vector<vector<double>> p_vec = r;
+    
+    vector<vector<double>> r_0 = r;  // r_0 = r(0) shadow residual fixed for all iteration
+    vector<vector<double>> P = r;   // search direction
 
     double rms = rmsNorm(b, p, r);
     s.error.push_back(rms);
 
-    // Allocate memory for temporary array fields
-    vector<vector<double>> v(p.Nx, vector<double>(p.Ny, 0.0));
-    vector<vector<double>> s_vec(p.Nx, vector<double>(p.Ny, 0.0));
-    vector<vector<double>> t(p.Nx, vector<double>(p.Ny, 0.0));
+    vector<vector<double>> z(p.Nx, vector<double>(p.Ny,0.0)); // auxillary vector
+    vector<vector<double>> Ap(p.Nx, vector<double>(p.Ny,0.0));
+    vector<vector<double>> Az(p.Nx, vector<double>(p.Ny,0.0));
 
-    double rho_prev = 1.0;
-    double alpha = 1.0;
-    double omega = 1.0;
+    double alpha = 0.0;
+    double xi = 0.0;
+    double beta = 0.0;
+    double s_old = dotProduct(b,p,r,r_0);
+    //double s_old = 1;
 
     int n;
     for(n=1; n<s.itermax; n++){
-        double rho = dotProduct(p, r_star, r);
-        //modifie search trajectory p_vec after first step
-        if (n > 1) {
-            double beta = (rho / rho_prev) * (alpha / omega);
-            for (int j = 1; j < p.Ny - 1; j++) {
-                for (int i = 1; i < p.Nx - 1; i++) {
-                    p_vec[i][j] = r[i][j] + beta * (p_vec[i][j] - omega * v[i][j]);
-                }
+        
+        double s_old = dotProduct(b,p,r,r_0);
+    
+        Ap = matVecProduct(b,p,c,P);
+
+        // alpha(k) = (r(k-1) . r_0) / (A*p(k) . r_0)
+        alpha = s_old /dotProduct(b,p,Ap,r_0);
+
+        // z(k) = r(k-1) - alpha(k) * A*p(k) temporary residual
+        for (int j=1; j<p.Ny-1; j++){
+            for(int i=1; i<p.Nx-1; i++){
+                z[i][j] = r[i][j] - alpha*Ap[i][j];
             }
         }
 
-        // 1. Compute v = A*p
-        v = matVecProduct(p, c, p_vec);
+        //Check Intermediate Residual z
+        // double z_norm = rmsNorm(b, p, z);
+        // if (z_norm <= s.tolerance) {
+        //     for (int j = 1; j < p.Ny - 1; j++) {
+        //         for (int i = 1; i < p.Nx - 1; i++) {
+        //             f.psi[i][j] += alpha * P[i][j];
+        //         }
+        //     }
+        //     rms = z_norm;
+        //     s.error.push_back(rms);
+        //     break;
+        // }
 
-        // 2. Compute alpha
-        alpha = rho / dotProduct(p, r_star, v);
+        Az = matVecProduct(b,p,c,z);
 
-        // 3. temporary residual s = r - alpha * v
-        for (int j = 1; j < p.Ny - 1; j++) {
-            for (int i = 1; i < p.Nx - 1; i++) {
-                s_vec[i][j] = r[i][j] - alpha * v[i][j];
+        //xi(k) = (A*z(k) . z(k)) / (A*z(k) . A*z(k))
+        xi = dotProduct(b,p,Az,z) / dotProduct(b,p,Az,Az);
+
+        // psi(k) = psi(k-1) + alpha(k)p(k) + xi(k)z(k)
+        for (int j=1; j<p.Ny-1; j++){
+            for(int i=1; i<p.Nx-1; i++){
+                f.psi[i][j] += alpha*P[i][j] + xi*z[i][j]; 
             }
         }
 
-        //Check Intermediate Residual s
-        double s_norm = rmsNorm(b, p, s_vec);
-        if (s_norm <= s.tolerance) {
-            for (int j = 1; j < p.Ny - 1; j++) {
-                for (int i = 1; i < p.Nx - 1; i++) {
-                    f.psi[i][j] += alpha * p_vec[i][j];
-                }
-            }
-            rms = s_norm;
-            s.error.push_back(rms);
-            break;
-        }
-
-        // if not converged yet the need to stabalize
-        // 4. Compute t = A*s
-        t = matVecProduct(p, c, s_vec);
-
-        // 5. Compute omega = (t, s) / (t, t)
-        omega = dotProduct(p, t, s_vec) / dotProduct(p, t, t);
-
-        // Update solution: psi = psi + alpha * p + omega * s
-        // Update residual: r = s - omega * t
-        for (int j = 1; j < p.Ny - 1; j++) {
-            for (int i = 1; i < p.Nx - 1; i++) {
-                f.psi[i][j] += alpha * p_vec[i][j] + omega * s_vec[i][j];
-                r[i][j] = s_vec[i][j] - omega * t[i][j];
+        //r(k) = z(k) - xi(k)Az(k)
+        for (int j=1; j<p.Ny-1; j++){
+            for(int i=1; i<p.Nx-1; i++){
+                r[i][j] = z[i][j] - xi*Az[i][j];
             }
         }
 
-        rms = rmsNorm(b, p, r);
+        double rms = rmsNorm(b,p,r);
         s.error.push_back(rms);
 
-        if (n % 10 == 0) { cout << "iter=" << n << "  rms=" << rms << endl;}
+        if(rms <= s.tolerance) break; 
 
-        if (rms <= s.tolerance) break;
+        double s_new = dotProduct(b, p, r_0, r);        
+        //beta(k) = (xi(k)/alpha(k)) *( (r(k) . r_0) / (r(k-1)) . r_0) )
+        beta = (alpha/xi) * (s_new/s_old);
+        // p(k+1) = r(k+1) +beta(k)*(P(k-1) - xi* A*p(k-1))
+        for (int j=1; j<p.Ny-1; j++){
+            for(int i=1; i<p.Nx-1; i++){
+                P[i][j] = r[i][j] + beta *(P[i][j] - xi*Ap[i][j] );
+            }
+        }
+        s_old = s_new;
+        // check convergence
 
-        rho_prev = rho;
+        
+
+        if(n%100 == 0) cout<< "iter=" << n<< " alpha=" << alpha<< " xi=" << xi<< " beta=" << beta<< endl;
+        // cout<< "iter=" << n<< " alpha=" << alpha<< " xi=" << xi<< " beta=" << beta<< endl;
+        // if(!isfinite(alpha)){cout<<"alpha breakdown"<<endl;break;}
+        // if(!isfinite(xi)){cout<<"xi breakdown"<<endl;break;}
+        // if(!isfinite(beta)){cout<<"beta breakdown"<<endl;break;}
+
     }
-
-    cout << "\nPSI BiCGSTAB Solver iterations = " << n << " | Final RMS = " << rms << endl;
-    if (n == s.itermax) cout << "Stopped due to itermax." << endl;
-    else cout << "Converged." << endl;
-
+    cout << "\n PSI BiCGSTAB iterations = "<< n << endl;
+    if(n == s.itermax) cout << "stopped due to itermax"<<endl;
+    else cout<< "Converged"<<endl;
 }
+
 
 void exportPsi(const MeshParameter& p,const Mesh& m,const Field& f,string filename){
     ofstream file(filename);
@@ -433,10 +439,18 @@ int main(){
     buildMask(b,p);
 
     //Jacobi(s,b,p,c,f);
-    SOR(s,b,p,c,f);
-    //BiCGSTAB(s,b,p,m,c,f);
+    // exportSolverData(s,p,m,c,f,"psi_J_converge.dat");
+    // exportPsi(p,m,f,"psi_J_solved.dat");
 
-    exportSolverData(s,p,m,c,f,"psi_SOR_converge.dat");
-    exportPsi(p,m,f,"psi_SOR_solved.dat");
+    //SOR(s,b,p,c,f);
+    // exportSolverData(s,p,m,c,f,"psi_SOR_converge.dat");
+    // exportPsi(p,m,f,"psi_SOR_solved.dat");
+
+    BiCGSTAB(s,b,p,m,c,f);
+
+    exportSolverData(s,p,m,c,f,"psi_BiCGSTAB_converge.dat");
+    exportPsi(p,m,f,"psi_BiCGSTAB_solved.dat");
+    
+    
     return 0;
 }
