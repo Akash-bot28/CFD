@@ -38,8 +38,16 @@ struct SolverParameter{
     int itermax;
     double tolerance;
     double W;
+    double alpha;
     vector<double> error;
 };
+struct SIPCoefficient{
+    vector<vector<double>> LS;
+    vector<vector<double>> LW;
+    vector<vector<double>> LP;
+    vector<vector<double>> UE;
+    vector<vector<double>> UN;
+}
 
 void readInput(Domain& d,Body& b,MeshParameter& p, Mesh& m, SolverParameter& s){
     string label;
@@ -56,6 +64,7 @@ void readInput(Domain& d,Body& b,MeshParameter& p, Mesh& m, SolverParameter& s){
         else if(label == "solver_itermax") input >> s.itermax;
         else if(label == "solver_tolerance") input >> s.tolerance;
         else if(label == "W") input >> s.W;
+        else if(label == "SIP_alpha") input >> s.alpha;
     }
     input.close();
     
@@ -257,8 +266,6 @@ void SOR(SolverParameter& s,const Body& b,const MeshParameter& p,const Coefficie
     if(n == s.itermax) cout << "Stopped due to itermax." << endl;
     else cout << "Converged."<< endl;
 }
-
-
 vector<vector<double>> matVecProduct(const Body& b,const MeshParameter& p, const Coefficient& c, const vector<vector<double>>& x) {
     vector<vector<double>> Ax(p.Nx, vector<double>(p.Ny, 0.0));
     for (int j = 1; j < p.Ny - 1; j++) {
@@ -292,7 +299,6 @@ double rmsNorm(const Body& b, const MeshParameter& p, const vector<vector<double
     if (fluid_nodes == 0.0) return 0.0;
     return sqrt(sum / fluid_nodes);
 }
-
 void BiCGSTAB(SolverParameter& s, const Body& b, const MeshParameter& p, const Mesh& m, const Coefficient& c, Field& f){
     s.error.clear();
     // r(0) = Q - A*psi(0)   initial residula
@@ -398,6 +404,72 @@ void BiCGSTAB(SolverParameter& s, const Body& b, const MeshParameter& p, const M
     cout << "\n PSI BiCGSTAB iterations = "<< n << endl;
     if(n == s.itermax) cout << "stopped due to itermax"<<endl;
     else cout<< "Converged"<<endl;
+}
+
+void generateLU(SIPCoefficient& sip,const MeshParameter& p,Coefficient& c){
+    sip.LS.assign(p.Nx, vector<double>(p.Ny, 0));
+    sip.LW.assign(p.Nx, vector<double>(p.Ny, 0));
+    sip.LP.assign(p.Nx, vector<double>(p.Ny, 0));
+    sip.UP.assign(p.Nx, vector<double>(p.Ny, 1));
+    sip.UE.assign(p.Nx, vector<double>(p.Ny, 0));
+    sip.UN.assign(p.Nx, vector<double>(p.Ny, 0));
+
+    for(int j=1;j<=p.Ny-2;j++){
+        for(int i=1;i<=p.Nx-2;i++){
+            sip.LS[i][j] = c.aS[i][j]/(1+s.alpha*sip.UE[i][j-1]);
+            sip.LW[i][j] = c.aW[i][j]/(1+s.aplha*sip.UN[i-1][j]);
+            sip.LP[i][j] = c.aP[i][j]+s.alpha*(sip.LW[i][j]*sip.UN[i-1][j] + sip.LS[i][j]*sip.UE[i][j-1]) - sip.LW[i][j]*sip.UE[i-1][j] - sip.LS[i][j]*sip.UN[i][j-1];
+            sip.UE[i][j] = (c.aE[i][j] - s.alpha*sip.LS[i][j]*sip.UE[i][j-1])/sip.LP[i][j];
+            sip.UN[i][j] = (c.aN[i][j] - s.alpha*sip.LW[i][j]*sip.UN[i-1][j]);
+        }
+
+    }
+    
+}
+/*
+vector<vector<double>> forwardSubstitution(SIPCoefficient& sip,const MeshParameter& p,const vector<vector<double>>& residual){
+
+    vector<vector<double>>& R;
+    R.assign(p.Nx,vector<double>(p.Ny,0.0));
+
+    for(int j=1; j<p.Ny-1; j++){
+        for(int i=1; i<p.Nx-1; i++){
+            R[i][j] =(residual[i][j] - sip.LW[i][j]*R[i-1][j] - sip.LS[i][j]*R[i][j-1]) / sip.LP[i][j];
+        }
+    }
+    return R;
+}
+*/
+
+vector<vector<double>> SIPsolve(const MeshParameter& p,const SIPCoefficient& sip,const vector<vector<double>>& rhs){
+    //Mx=rhs
+    //LUx=rhs
+    
+    // Forward substitution
+    
+    vector<vector<double>> R(p.Nx,vector<double>(p.Ny,0.0));
+
+    for(int j=1; j<p.Ny-1; j++){
+        for(int i=1; i<p.Nx-1; i++){
+            R[i][j] = (rhs[i][j] - sip.LW[i][j]*R[i-1][j] - sip.LS[i][j]*R[i][j-1])/ sip.LP[i][j];
+        }
+    }
+
+    // Backward substitution
+
+    vector<vector<double>> x(p.Nx,vector<double>(p.Ny,0.0));
+
+    for(int j=p.Ny-2; j>=1; j--){
+        for(int i=p.Nx-2; i>=1; i--){
+            x[i][j] = R[i][j] - sip.UE[i][j]*x[i+1][j] - sip.UN[i][j]*x[i][j+1];
+        }
+    }
+    return x;
+}
+
+
+void PBiCGSTAB(SIPCoefficient& sip,SolverParameter& s, const Body& b, const MeshParameter& p, const Mesh& m, const Coefficient& c, Field& f){
+
 }
 
 
